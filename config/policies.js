@@ -1,22 +1,24 @@
-/**
- * Policy Mappings
- * (sails.config.policies)
- *
- * Policies are simple functions which run **before** your actions.
- *
- * For more information on configuring policies, check out:
- * https://sailsjs.com/docs/concepts/policies
- */
-
 module.exports.policies = {
+  '*': 'isAuthenticated',
 
-  /***************************************************************************
-  *                                                                          *
-  * Default policy for all controllers and actions, unless overridden.       *
-  * (`true` allows public access)                                            *
-  *                                                                          *
-  ***************************************************************************/
+  AuthController: {
+    login: true,
+    me: 'isAuthenticated'
+  },
 
-  // '*': true,
+  UserController: {
+    '*': ['isAuthenticated', 'isAdmin']
+  },
 
+  PertandinganController: {
+    '*': ['isAuthenticated', 'isAdmin']
+  },
+
+  WasitController: {
+    '*': ['isAuthenticated', 'isWasit']
+  },
+
+  PublicController: {
+    '*': true       
+  }
 };
