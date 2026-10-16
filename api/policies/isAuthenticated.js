@@ -1,34 +1,24 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-module.exports = {
-  login: async function (req, res) {
-    const { email, password } = req.body;
+module.exports = async function (req, res, proceed) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email dan password wajib diisi' });
-    }
+  if (!token) {
+    return res.status(401).json({ message: 'Token tidak ditemukan, silakan login' });
+  }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+  try {
+    const decoded = jwt.verify(token, sails.config.custom.jwtSecret);
+    const user = await User.findOne({ id: decoded.id });
+
     if (!user) {
-      return res.status(401).json({ message: 'Email atau password salah' });
+      return res.status(401).json({ message: 'User tidak ditemukan' });
     }
 
-    const cocok = await bcrypt.compare(password, user.password);
-    if (!cocok) {
-      return res.status(401).json({ message: 'Email atau password salah' });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      sails.config.custom.jwtSecret,
-      { expiresIn: sails.config.custom.jwtExpiresIn }
-    );
-
-    return res.json({ message: 'Login berhasil', token, user });
-  },
-
-  me: async function (req, res) {
-    return res.json({ user: req.me });
+    req.me = user;
+    return proceed();
+  } catch (err) {
+    return res.status(401).json({ message: 'Token tidak valid atau kadaluarsa' });
   }
 };
