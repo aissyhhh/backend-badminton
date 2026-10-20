@@ -59,12 +59,12 @@ module.exports = {
     },
 
     destroy: async function (req, res) {
-    if (Number(req.params.id) === req.me.id) {
-      return res.status(400).json({ message: 'Tidak bisa menghapus akun sendiri' });
+        if (Number(req.params.id) === req.me.id) {
+            return res.status(400).json({ message: 'Tidak bisa menghapus akun sendiri' });
+        }
+        const user = await User.destroyOne({ id: req.params.id });
+        if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
+        return res.json({ message: 'User dihapus' });
     }
-    const user = await User.destroyOne({ id: req.params.id });
-    if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
-    return res.json({ message: 'User dihapus' });
-  }
 };
 

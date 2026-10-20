@@ -17,4 +17,5 @@ module.exports.routes = {
 
   'GET /public/articles': 'PublicArticleController.list',
   'GET /public/articles/:slug': 'PublicArticleController.detail',
+
 };
