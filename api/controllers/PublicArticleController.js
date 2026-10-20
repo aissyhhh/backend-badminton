@@ -1,5 +1,4 @@
 module.exports = {
-  // GET /public/articles?kategori=tips&page=1&limit=9
   list: async function (req, res) {
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit) || 9, 50);
@@ -15,16 +14,9 @@ module.exports = {
       limit
     });
 
-    return res.json({
-      data,
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit)
-    });
+    return res.json({ data, page, limit, total, totalPages: Math.ceil(total / limit)});
   },
 
-  // GET /public/articles/:slug
   detail: async function (req, res) {
     const data = await Article.findOne({
       slug: req.params.slug,

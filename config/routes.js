@@ -7,8 +7,6 @@ module.exports.routes = {
   'POST /users': 'UserController.create',
   'PATCH /users/:id': 'UserController.update',
   'DELETE /users/:id': 'UserController.destroy',
-<<<<<<< HEAD
-=======
 
   // artikel
   'GET /articles': 'ArticleController.list',
@@ -19,5 +17,5 @@ module.exports.routes = {
 
   'GET /public/articles': 'PublicArticleController.list',
   'GET /public/articles/:slug': 'PublicArticleController.detail',
->>>>>>> origin/fitur-artikel-dasar
+
 };
