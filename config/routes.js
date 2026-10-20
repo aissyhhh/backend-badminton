@@ -13,7 +13,7 @@ module.exports.routes = {
   'GET /articles/:id': 'ArticleController.detail',
   'POST /articles': 'ArticleController.create',
   'PATCH /articles/:id': 'ArticleController.update',
-  'DELETE /articles/:id': 'ArticleController.destroy',
+  'DELETE /articles/:id': 'ArticleController.delete',
 
   'GET /public/articles': 'PublicArticleController.list',
   'GET /public/articles/:slug': 'PublicArticleController.detail',
