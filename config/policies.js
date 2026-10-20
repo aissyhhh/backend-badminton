@@ -10,15 +10,15 @@ module.exports.policies = {
     '*': ['isAuthenticated', 'isAdmin']
   },
 
-  PertandinganController: {
-    '*': ['isAuthenticated', 'isAdmin']
-  },
-
   WasitController: {
     '*': ['isAuthenticated', 'isWasit']
   },
 
+   ArticleController: {
+    '*': ['isAuthenticated', 'isAdmin']
+  },
+
   PublicController: {
-    '*': true       
+    '*': true
   }
 };
