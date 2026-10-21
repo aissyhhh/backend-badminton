@@ -11,20 +11,32 @@ function buatSlug(teks) {
 module.exports = {
   list: async function (req, res) {
     try {
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const limit = Math.min(Number(req.query.limit) || 9, 50);
+
       const where = {
-        publish_at: { "<=": new Date() }
+        publish_at: { '<=': new Date() }
       };
 
       if (req.query.kategori) {
         where.kategori = req.query.kategori;
       }
 
+      const total = await Article.count(where);
       const data = await Article.find({
         where,
-        sort: "publish_at DESC"
+        sort: 'publish_at DESC',
+        skip: (page - 1) * limit,
+        limit
       });
 
-      return res.json(data);
+      return res.json({
+        data,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      });
     } catch (err) {
       sails.log.error(err);
       return res.serverError(err);

@@ -9,14 +9,11 @@ module.exports.routes = {
   'PATCH /users/:id': 'UserController.update',
   'DELETE /users/:id': 'UserController.destroy',
 
-  // Artikel untuk admin
+  // Artikel
   'GET /articles': 'ArticleController.list',
   'GET /articles/:id': 'ArticleController.detail',
+  'GET /articles/slug/:slug': 'ArticleController.findBySlug',
   'POST /articles': 'ArticleController.create',
   'PATCH /articles/:id': 'ArticleController.update',
   'DELETE /articles/:id': 'ArticleController.delete',
-
-  // Artikel publik
-  'GET /public/articles': 'PublicArticleController.list',
-  'GET /public/articles/:slug': 'PublicArticleController.detail',
 };
