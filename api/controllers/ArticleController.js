@@ -11,7 +11,9 @@ function buatSlug(teks) {
 module.exports = {
   list: async function (req, res) {
     try {
-      const where = {};
+      const where = {
+        publish_at: { "<=": new Date() }
+      };
 
       if (req.query.kategori) {
         where.kategori = req.query.kategori;
@@ -19,7 +21,7 @@ module.exports = {
 
       const data = await Article.find({
         where,
-        sort: "publish_at DESC",
+        sort: "publish_at DESC"
       });
 
       return res.json(data);
@@ -33,11 +35,32 @@ module.exports = {
     try {
       const data = await Article.findOne({
         id: req.params.id,
+        publish_at: { "<=": new Date() }
       });
 
       if (!data) {
         return res.status(404).json({
-          message: "Artikel tidak ditemukan",
+          message: "Artikel tidak ditemukan"
+        });
+      }
+
+      return res.json(data);
+    } catch (err) {
+      sails.log.error(err);
+      return res.serverError(err);
+    }
+  },
+
+  findBySlug: async function (req, res) {
+    try {
+      const data = await Article.findOne({
+        slug: req.params.slug,
+        publish_at: { "<=": new Date() }
+      });
+
+      if (!data) {
+        return res.status(404).json({
+          message: "Artikel tidak ditemukan"
         });
       }
 
@@ -54,22 +77,15 @@ module.exports = {
 
       if (!judul || !deskripsi || !kategori) {
         return res.status(400).json({
-          message: "Judul, deskripsi, dan kategori wajib diisi",
+          message: "Judul, deskripsi, dan kategori wajib diisi"
         });
       }
 
-      const data = await Article.create({
-        slug: buatSlug(judul),
-        judul,
-        deskripsi,
-        kategori,
-        gambar: gambar || "",
-        publish_at,
-      }).fetch();
+      const data = await Article.create({ slug: buatSlug(judul), judul, deskripsi, kategori, gambar: gambar || "", publish_at: publish_at || null }).fetch();
 
       return res.status(201).json({
         message: "Artikel berhasil ditambahkan",
-        data,
+        data
       });
     } catch (err) {
       sails.log.error(err);
@@ -86,7 +102,7 @@ module.exports = {
 
       if (!artikel) {
         return res.status(404).json({
-          message: "Artikel tidak ditemukan",
+          message: "Artikel tidak ditemukan"
         });
       }
 
@@ -95,7 +111,7 @@ module.exports = {
       if (judul !== undefined) {
         if (!judul.trim()) {
           return res.status(400).json({
-            message: "Judul tidak boleh kosong",
+            message: "Judul tidak boleh kosong"
           });
         }
 
@@ -106,22 +122,30 @@ module.exports = {
       if (deskripsi !== undefined) {
         if (!deskripsi.trim()) {
           return res.status(400).json({
-            message: "Deskripsi tidak boleh kosong",
+            message: "Deskripsi tidak boleh kosong"
           });
         }
 
         perubahan.deskripsi = deskripsi;
       }
 
-      if (kategori !== undefined) perubahan.kategori = kategori;
-      if (gambar !== undefined) perubahan.gambar = gambar;
-      if (publish_at !== undefined) perubahan.publish_at = publish_at;
+      if (kategori !== undefined) {
+        perubahan.kategori = kategori;
+      }
+
+      if (gambar !== undefined) {
+        perubahan.gambar = gambar;
+      }
+
+      if (publish_at !== undefined) {
+        perubahan.publish_at = publish_at;
+      }
 
       const data = await Article.updateOne({ id }).set(perubahan);
 
       return res.json({
         message: "Artikel berhasil diperbarui",
-        data,
+        data
       });
     } catch (err) {
       sails.log.error(err);
@@ -137,18 +161,18 @@ module.exports = {
 
       if (!artikel) {
         return res.status(404).json({
-          message: "Artikel tidak ditemukan",
+          message: "Artikel tidak ditemukan"
         });
       }
 
       await Article.destroyOne({ id });
 
       return res.json({
-        message: "Artikel berhasil dihapus",
+        message: "Artikel berhasil dihapus"
       });
     } catch (err) {
       sails.log.error(err);
       return res.serverError(err);
     }
-  },
+  }
 };

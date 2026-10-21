@@ -1,24 +1,25 @@
 module.exports.policies = {
-  '*': 'isAuthenticated',
+  "*": "isAuthenticated",
 
   AuthController: {
     login: true,
-    me: 'isAuthenticated'
+    me: "isAuthenticated",
   },
 
   UserController: {
-    '*': ['isAuthenticated', 'isAdmin']
+    "*": ["isAuthenticated", "isAdmin"],
   },
 
   WasitController: {
-    '*': ['isAuthenticated', 'isWasit']
+    "*": ["isAuthenticated", "isWasit"],
   },
 
-   ArticleController: {
-    '*': ['isAuthenticated', 'isAdmin']
+  ArticleController: {
+    "*": ["isAuthenticated", "isAdmin"],
   },
 
-  PublicController: {
-    '*': true
-  }
+  PublicArticleController: {
+    list: true,
+    detail: true,
+  },
 };
