@@ -17,16 +17,19 @@ module.exports.routes = {
   'DELETE /articles/:id': 'ArticleController.delete',
 
   // turnamen
-  "GET /turnamen": "TurnamenController.find",
-  "GET /turnamen/:id": "TurnamenController.findOne",
-  "POST /turnamen": "TurnamenController.create",
-  "PATCH /turnamen/:id": "TurnamenController.update",
-  "DELETE /turnamen/:id": "TurnamenController.delete",
+  'GET /turnamen': 'TurnamenController.find',
+  'GET /turnamen/:id': 'TurnamenController.findOne',
+  'POST /turnamen': 'TurnamenController.create',
+  'PATCH /turnamen/:id': 'TurnamenController.update',
+  'DELETE /turnamen/:id': 'TurnamenController.delete',
 
   // kelas turnamen
-  "GET /kelas-turnamen": "KelasTurnamenController.find",
-  "GET /kelas-turnamen/:id": "KelasTurnamenController.findOne",
-  "POST /kelas-turnamen": "KelasTurnamenController.create",
-  "PATCH /kelas-turnamen/:id": "KelasTurnamenController.update",
-  "DELETE /kelas-turnamen/:id": "KelasTurnamenController.delete",
+  'GET /kelas-turnamen': 'KelasTurnamenController.find',
+  'GET /kelas-turnamen/:id': 'KelasTurnamenController.findOne',
+
+  // kelas turnamen berdasarkan turnamen
+  'GET /turnamen/:turnamenId/kelas-turnamen': 'KelasTurnamenController.findByTurnamen',
+  'POST /turnamen/:turnamenId/kelas-turnamen': 'KelasTurnamenController.create',
+  'PATCH /turnamen/:turnamenId/kelas-turnamen/:kelasId': 'KelasTurnamenController.update',
+  'DELETE /turnamen/:turnamenId/kelas-turnamen/:kelasId': 'KelasTurnamenController.delete',
 };

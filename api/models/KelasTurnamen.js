@@ -7,7 +7,7 @@ module.exports = {
 
         sektor: {
             type: "string",
-            isIn: ["MS", "WS", "MD", "WD", "XD"],
+            isIn: ["Tunggal Putra", "Tunggal Putri", "Ganda Putra", "Ganda Putri", "Ganda Campuran"],
             required: true,
         },
 
@@ -18,8 +18,14 @@ module.exports = {
 
         harga: {
             type: "number",
-            columnType: "decimal(12,2)",
+            columnType: "decimal(12,0)",
             required: true,
         },
+
+        kapasitas: {
+            type: "number",
+            required: true,
+            min: 1,
+        }
     },
 };

@@ -1,7 +1,9 @@
 module.exports = {
     async find(req, res) {
         try {
-            const data = await KelasTurnamen.find().populate("turnamen_id");
+            const data = await KelasTurnamen.find()
+                .populate('turnamen_id');
+
             return res.ok(data);
         } catch (error) {
             return res.serverError(error);
@@ -12,11 +14,11 @@ module.exports = {
         try {
             const data = await KelasTurnamen.findOne({
                 id: req.params.id,
-            }).populate("turnamen_id");
+            }).populate('turnamen_id');
 
             if (!data) {
                 return res.notFound({
-                    message: "Kelas turnamen tidak ditemukan.",
+                    message: 'Kelas turnamen tidak ditemukan.',
                 });
             }
 
@@ -28,21 +30,51 @@ module.exports = {
 
     async create(req, res) {
         try {
+            const turnamenId = req.params.turnamenId;
+
             const turnamen = await Turnamen.findOne({
-                id: req.body.turnamen_id,
+                id: turnamenId,
             });
 
             if (!turnamen) {
+                return res.notFound({
+                    message: 'Turnamen tidak ditemukan.',
+                });
+            }
+
+            const {
+                sektor,
+                kategori_usia,
+                harga,
+                kapasitas,
+            } = req.body;
+
+            if (
+                !sektor ||
+                !kategori_usia ||
+                harga == null ||
+                kapasitas == null
+            ) {
                 return res.badRequest({
-                    message: "Turnamen tidak ditemukan.",
+                    message: 'Sektor, kategori usia, harga, dan kapasitas peserta wajib diisi.',
+                });
+            }
+
+            if (
+                !Number.isInteger(Number(kapasitas)) ||
+                Number(kapasitas) < 1
+            ) {
+                return res.badRequest({
+                    message: 'Kapasitas peserta harus berupa bilangan bulat minimal 1.',
                 });
             }
 
             const data = await KelasTurnamen.create({
-                turnamen_id: req.body.turnamen_id,
-                sektor: req.body.sektor,
-                kategori_usia: req.body.kategori_usia,
-                harga: req.body.harga,
+                turnamen_id: turnamenId,
+                sektor,
+                kategori_usia,
+                harga,
+                kapasitas: Number(kapasitas),
             }).fetch();
 
             return res.status(201).json(data);
@@ -53,15 +85,44 @@ module.exports = {
 
     async update(req, res) {
         try {
-            const data = await KelasTurnamen.updateOne({
-                id: req.params.id,
-            }).set(req.body);
+            const { turnamenId, kelasId } = req.params;
 
-            if (!data) {
+            const kelas = await KelasTurnamen.findOne({
+                id: kelasId,
+                turnamen_id: turnamenId,
+            });
+
+            if (!kelas) {
                 return res.notFound({
-                    message: "Kelas turnamen tidak ditemukan.",
+                    message: 'Kelas tidak ditemukan dalam turnamen tersebut.',
                 });
             }
+
+            const kapasitas = req.body.kapasitas;
+
+            if (
+                kapasitas !== undefined &&
+                (
+                    !Number.isInteger(Number(kapasitas)) ||
+                    Number(kapasitas) < 1
+                )
+            ) {
+                return res.badRequest({
+                    message: 'Kapasitas peserta harus berupa bilangan bulat minimal 1.',
+                });
+            }
+
+            const data = await KelasTurnamen.updateOne({
+                id: kelasId,
+            }).set({
+                sektor: req.body.sektor ?? kelas.sektor,
+                kategori_usia: req.body.kategori_usia ?? kelas.kategori_usia,
+                harga: req.body.harga ?? kelas.harga,
+                kapasitas:
+                    kapasitas === undefined
+                        ? kelas.kapasitas
+                        : Number(kapasitas),
+            });
 
             return res.ok(data);
         } catch (error) {
@@ -71,19 +132,50 @@ module.exports = {
 
     async delete(req, res) {
         try {
-            const data = await KelasTurnamen.destroyOne({
-                id: req.params.id,
+            const { turnamenId, kelasId } = req.params;
+
+            const kelas = await KelasTurnamen.findOne({
+                id: kelasId,
+                turnamen_id: turnamenId,
             });
 
-            if (!data) {
+            if (!kelas) {
                 return res.notFound({
-                    message: "Kelas turnamen tidak ditemukan.",
+                    message: 'Kelas tidak ditemukan dalam turnamen tersebut.',
                 });
             }
 
-            return res.ok({
-                message: "Kelas turnamen berhasil dihapus.",
+            await KelasTurnamen.destroyOne({
+                id: kelasId,
             });
+
+            return res.ok({
+                message: 'Kelas turnamen berhasil dihapus.',
+            });
+        } catch (error) {
+            return res.serverError(error);
+        }
+    },
+
+    async findByTurnamen(req, res) {
+        try {
+            const turnamenId = req.params.turnamenId;
+
+            const turnamen = await Turnamen.findOne({
+                id: turnamenId,
+            });
+
+            if (!turnamen) {
+                return res.notFound({
+                    message: 'Turnamen tidak ditemukan.',
+                });
+            }
+
+            const data = await KelasTurnamen.find({
+                turnamen_id: turnamenId,
+            });
+
+            return res.ok(data);
         } catch (error) {
             return res.serverError(error);
         }
