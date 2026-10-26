@@ -1,4 +1,3 @@
-
 module.exports.routes = {
   'POST /auth/login': 'AuthController.login',
 
@@ -16,4 +15,12 @@ module.exports.routes = {
   'POST /articles': 'ArticleController.create',
   'PATCH /articles/:id': 'ArticleController.update',
   'DELETE /articles/:id': 'ArticleController.delete',
+
+    // Turnamen
+    "GET /turnamen": "TurnamenController.find",
+    "GET /turnamen/:id": "TurnamenController.findOne",
+    "POST /turnamen": "TurnamenController.create",
+    "PATCH /turnamen/:id": "TurnamenController.update",
+    "DELETE /turnamen/:id": "TurnamenController.delete",
+
 };
