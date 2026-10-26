@@ -11,20 +11,36 @@ function buatSlug(teks) {
 module.exports = {
   list: async function (req, res) {
     try {
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const limit = Math.min(Number(req.query.limit) || 9, 50);
+
       const where = {
-        publish_at: { "<=": new Date() }
+        publish_at: { "<=": new Date() },
       };
 
       if (req.query.kategori) {
         where.kategori = req.query.kategori;
       }
 
+      if (req.query.search) {
+        where.judul = { contains: req.query.search };
+      }
+
+      const total = await Article.count(where);
       const data = await Article.find({
         where,
-        sort: "publish_at DESC"
+        sort: "publish_at DESC",
+        skip: (page - 1) * limit,
+        limit,
       });
 
-      return res.json(data);
+      return res.json({
+        data,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      });
     } catch (err) {
       sails.log.error(err);
       return res.serverError(err);
@@ -35,12 +51,12 @@ module.exports = {
     try {
       const data = await Article.findOne({
         id: req.params.id,
-        publish_at: { "<=": new Date() }
+        publish_at: { "<=": new Date() },
       });
 
       if (!data) {
         return res.status(404).json({
-          message: "Artikel tidak ditemukan"
+          message: "Artikel tidak ditemukan",
         });
       }
 
@@ -55,12 +71,12 @@ module.exports = {
     try {
       const data = await Article.findOne({
         slug: req.params.slug,
-        publish_at: { "<=": new Date() }
+        publish_at: { "<=": new Date() },
       });
 
       if (!data) {
         return res.status(404).json({
-          message: "Artikel tidak ditemukan"
+          message: "Artikel tidak ditemukan",
         });
       }
 
@@ -77,15 +93,21 @@ module.exports = {
 
       if (!judul || !deskripsi || !kategori) {
         return res.status(400).json({
-          message: "Judul, deskripsi, dan kategori wajib diisi"
+          message: "Judul, deskripsi, dan kategori wajib diisi",
         });
       }
 
-      const data = await Article.create({ slug: buatSlug(judul), judul, deskripsi, kategori, gambar: gambar || "", publish_at: publish_at || null }).fetch();
-
+      const data = await Article.create({
+        slug: buatSlug(judul),
+        judul,
+        deskripsi,
+        kategori,
+        gambar: gambar || "",
+        publish_at: publish_at ? new Date(publish_at) : new Date(),
+      }).fetch();
       return res.status(201).json({
         message: "Artikel berhasil ditambahkan",
-        data
+        data,
       });
     } catch (err) {
       sails.log.error(err);
@@ -102,7 +124,7 @@ module.exports = {
 
       if (!artikel) {
         return res.status(404).json({
-          message: "Artikel tidak ditemukan"
+          message: "Artikel tidak ditemukan",
         });
       }
 
@@ -111,7 +133,7 @@ module.exports = {
       if (judul !== undefined) {
         if (!judul.trim()) {
           return res.status(400).json({
-            message: "Judul tidak boleh kosong"
+            message: "Judul tidak boleh kosong",
           });
         }
 
@@ -122,7 +144,7 @@ module.exports = {
       if (deskripsi !== undefined) {
         if (!deskripsi.trim()) {
           return res.status(400).json({
-            message: "Deskripsi tidak boleh kosong"
+            message: "Deskripsi tidak boleh kosong",
           });
         }
 
@@ -145,7 +167,7 @@ module.exports = {
 
       return res.json({
         message: "Artikel berhasil diperbarui",
-        data
+        data,
       });
     } catch (err) {
       sails.log.error(err);
@@ -161,18 +183,18 @@ module.exports = {
 
       if (!artikel) {
         return res.status(404).json({
-          message: "Artikel tidak ditemukan"
+          message: "Artikel tidak ditemukan",
         });
       }
 
       await Article.destroyOne({ id });
 
       return res.json({
-        message: "Artikel berhasil dihapus"
+        message: "Artikel berhasil dihapus",
       });
     } catch (err) {
       sails.log.error(err);
       return res.serverError(err);
     }
-  }
+  },
 };

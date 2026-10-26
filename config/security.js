@@ -33,6 +33,7 @@ module.exports.security = {
     allowOrigins: ['http://localhost:3000'],
     allowCredentials: false,
     allowRequestHeaders: 'content-type,authorization',
+    allowRequestMethods: 'GET,POST,PATCH,DELETE,OPTIONS'
   }
 
   /****************************************************************************
