@@ -1,7 +1,10 @@
 module.exports = {
     async find(req, res) {
         try {
-            const data = await Turnamen.find().sort("id DESC");
+            const data = await Turnamen.find()
+                .populate("kelas_turnamen")
+                .sort("id DESC");
+
             return res.ok(data);
         } catch (error) {
             return res.serverError(error);
@@ -10,9 +13,12 @@ module.exports = {
 
     async findOne(req, res) {
         try {
-            const data = await Turnamen.findOne({
-                id: req.params.id,
-            }).populate("kelas_turnamen");
+            const { id, slug } = req.params;
+
+            const criteria = id ? { id } : { slug };
+
+            const data = await Turnamen.findOne(criteria)
+                .populate("kelas_turnamen");
 
             if (!data) {
                 return res.notFound({
@@ -25,7 +31,6 @@ module.exports = {
             return res.serverError(error);
         }
     },
-
     async create(req, res) {
         try {
             const data = await Turnamen.create({

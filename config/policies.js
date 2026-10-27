@@ -1,3 +1,6 @@
+const KelasTurnamenController = require("../api/controllers/KelasTurnamenController");
+const KelasTurnamen = require("../api/models/KelasTurnamen");
+
 module.exports.policies = {
   '*': 'isAuthenticated',
 
@@ -18,8 +21,19 @@ module.exports.policies = {
     list: true,
     detail: true,
     findBySlug: true,
-    create: ['isAuthenticated', 'isAdmin'],
-    update: ['isAuthenticated', 'isAdmin'],
-    delete: ['isAuthenticated', 'isAdmin'],
+    '*': ['isAuthenticated', 'isAdmin'],
   },
+
+  TurnamenController: {
+    find: true,
+    findOne: true,
+    '*': ['isAuthenticated', 'isAdmin'],
+  },
+
+  KelasTurnamenController: {
+    '*': ['isAuthenticated', 'isAdmin'],
+    find: true,
+    findOne: true,
+    findByTurnamen: true,
+  }
 };
