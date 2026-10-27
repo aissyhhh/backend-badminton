@@ -35,7 +35,6 @@ module.exports = {
 
         alamat: {
             type: "string",
-            type: "string",
             allowNull: true,
         },
 
@@ -63,7 +62,7 @@ module.exports = {
 
         status: {
             type: "string",
-            isIn: ["akan_datang", "berlangsung", "selesai"],
+            isIn: ["akan_datang", "berlangsung", "selesai", "dibatalkan"],
             defaultsTo: "akan_datang",
         },
 
