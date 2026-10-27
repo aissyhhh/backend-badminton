@@ -1,4 +1,17 @@
 module.exports = function (req, res, proceed) {
-  if (req.me && req.me.role === 'admin') return proceed();
-  return res.status(403).json({ message: 'Hanya admin yang boleh mengakses' });
+  const user = req.session ? req.session.user : null;
+
+  if (!user) {
+    return res.forbidden({
+      message: "Anda harus login terlebih dahulu.",
+    });
+  }
+
+  if (user.role !== "admin") {
+    return res.forbidden({
+      message: "Anda tidak memiliki akses admin.",
+    });
+  }
+
+  return proceed();
 };
