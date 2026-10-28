@@ -15,7 +15,7 @@ module.exports = {
     },
 
     player_id: {
-      model: 'Players',
+      model: 'Player',
       columnName: 'player_id',
     },
 

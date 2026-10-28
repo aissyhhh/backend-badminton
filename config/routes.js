@@ -33,12 +33,16 @@ module.exports.routes = {
   'PATCH /turnamen/:turnamenId/kelas-turnamen/:kelasId': 'KelasTurnamenController.update',
   'DELETE /turnamen/:turnamenId/kelas-turnamen/:kelasId': 'KelasTurnamenController.delete',
 
-  //pendaftaran
-  'POST /api/pendaftaran': 'PendaftaranController.create',
-  'GET /api/pendaftaran': 'PendaftaranController.find',
-  'GET /api/pendaftaran/:id': 'PendaftaranController.findOne',
-  'GET /api/pendaftaran/kode/:kode': 'PendaftaranController.findByKode',
-  'PUT /api/pendaftaran/:id/status': 'PendaftaranController.updateStatus',
-  'DELETE /api/pendaftaran/:id': 'PendaftaranController.destroy',
-  'POST /api/pendaftaran/:id/upload-dokumen': 'PendaftaranController.uploadDokumen',
+  // pendaftaran berdasarkan turnamen
+  'POST /turnamen/:turnamenId/pendaftaran': 'PendaftaranController.create',
+  'GET /turnamen/:turnamenId/pendaftaran': 'PendaftaranController.findByTurnamen',
+
+  // ambil pendaftaran pakai id atau kode
+  'GET /pendaftaran/:id': 'PendaftaranController.findOne',
+  'GET /pendaftaran/kode/:kode': 'PendaftaranController.findByKode',
+
+  // kelola pendaftaran
+  'PUT /pendaftaran/:id/status': 'PendaftaranController.updateStatus',
+  'DELETE /pendaftaran/:id': 'PendaftaranController.destroy',
+  'POST /pendaftaran/:id/upload-dokumen': 'PendaftaranController.uploadDokumen',
 };
