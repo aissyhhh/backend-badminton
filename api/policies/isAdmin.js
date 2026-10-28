@@ -1,8 +1,8 @@
 module.exports = function (req, res, proceed) {
-  const user = req.session ? req.session.user : null;
+  const user = req.me;
 
   if (!user) {
-    return res.forbidden({
+    return res.status(401).json({
       message: "Anda harus login terlebih dahulu.",
     });
   }
