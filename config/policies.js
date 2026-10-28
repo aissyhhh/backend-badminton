@@ -35,5 +35,15 @@ module.exports.policies = {
     find: true,
     findOne: true,
     findByTurnamen: true,
-  }
+  },
+
+  PendaftaranController: {
+    create: true,
+    findByKode: true,
+    find: 'isAdmin',
+    findOne: 'isAdmin',
+    updateStatus: 'isAdmin',
+    destroy: 'isAdmin',
+    uploadDokumen: true,
+  },
 };
