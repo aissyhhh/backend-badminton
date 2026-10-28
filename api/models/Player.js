@@ -15,22 +15,17 @@ module.exports = {
       columnName: 'nama',
     },
 
+    nik: {
+      type: 'string',
+      maxLength: 255,
+      unique: true,
+      columnName: 'nik',
+    },
+
     gambar_diri: {
       type: 'string',
       maxLength: 255,
       columnName: 'gambar_diri',
-    },
-
-    negara: {
-      type: 'string',
-      maxLength: 255,
-      columnName: 'negara',
-    },
-
-    bendera: {
-      type: 'string',
-      maxLength: 255,
-      columnName: 'bendera',
     },
 
     sektor: {

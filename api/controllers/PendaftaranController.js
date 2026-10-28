@@ -33,9 +33,9 @@ module.exports = {
                     });
                 }
 
-                if (turnamen.status !== 'active') {
+                if (!['akan_datang', 'pendaftaran', 'berlangsung'].includes(turnamen.status)) {
                     return res.badRequest({
-                        message: 'Turnamen tidak aktif.',
+                        message: 'Pendaftaran tidak tersedia untuk turnamen ini.',
                     });
                 }
             }
@@ -60,8 +60,9 @@ module.exports = {
 
                 const record = await PesertaPendaftaran.create({
                     pendaftaran_id: pendaftaran.id,
-                    player_id: p.player_id || null,
+                    player_id: null,
                     urutan_pemain: p.urutan_pemain || (i + 1),
+                    kelas_turnamen_id: kelas_turnamen_id,
                     nama_lengkap: p.nama_lengkap,
                     nama_panggilan: p.nama_panggilan || null,
                     jenis_kelamin: p.jenis_kelamin || null,
@@ -72,16 +73,16 @@ module.exports = {
                     nomor_tlp: p.nomor_tlp || null,
                     email: p.email || null,
                     pendidikan_terakhir: p.pendidikan_terakhir || null,
-                    nama_klub: p.nama_klub || null,
-                    nama_sekolah: p.nama_sekolah || null,
+                    nama_klub: p.nama_klub || '',
+                    nama_pelatih: p.nama_pelatih || '',
                     nama_ayah: p.nama_ayah || null,
                     pekerjaan_ayah: p.pekerjaan_ayah || null,
                     nomor_tlp_ayah: p.nomor_tlp_ayah || null,
                     nama_ibu: p.nama_ibu || null,
                     pekerjaan_ibu: p.pekerjaan_ibu || null,
                     nomor_tlp_ibu: p.nomor_tlp_ibu || null,
-                    riwayat_pertandingan: p.riwayat_pertandingan || null,
-                    pencapaian_tertinggi: p.pencapaian_tertinggi || null,
+                    riwayat_pertandingan: p.riwayat_pertandingan || '',
+                    pencapaian_tertinggi: p.pencapaian_tertinggi || '',
                     foto_akte: p.foto_akte || null,
                     foto_kk: p.foto_kk || null,
                     foto_peserta: p.foto_peserta || null,
@@ -100,7 +101,13 @@ module.exports = {
 
         } catch (err) {
             sails.log.error('Error saat membuat pendaftaran:', err);
-            return res.serverError({ message: 'Terjadi kesalahan server.', error: err.message });
+            sails.log.error('Detail:', err.raw || err.details || err.message);
+
+            return res.serverError({
+                message: 'Terjadi kesalahan server.',
+                error: err.message,
+                details: err.details || null,
+            });
         }
     },
 
@@ -208,7 +215,12 @@ module.exports = {
             const { id } = req.params;
             const { status_pendaftaran } = req.body;
 
-            const validStatuses = ['pending', 'confirmed', 'cancelled', 'rejected'];
+            const validStatuses = [
+                'pending',
+                'confirmed',
+                'cancelled',
+                'rejected',
+            ];
 
             if (!status_pendaftaran || !validStatuses.includes(status_pendaftaran)) {
                 return res.badRequest({
@@ -219,10 +231,95 @@ module.exports = {
             const pendaftaran = await Pendaftaran.findOne({ id });
 
             if (!pendaftaran) {
-                return res.notFound({ message: 'Pendaftaran tidak ditemukan.' });
+                return res.notFound({
+                    message: 'Pendaftaran tidak ditemukan.',
+                });
             }
 
-            const updated = await Pendaftaran.updateOne({ id }).set({
+            // Ambil seluruh peserta dalam pendaftaran ini.
+            const pesertaList = await PesertaPendaftaran.find({
+                pendaftaran_id: pendaftaran.id,
+            });
+
+            // Jika dikonfirmasi, pastikan semua peserta memiliki NIK.
+            if (status_pendaftaran === 'confirmed') {
+                if (pesertaList.length === 0) {
+                    return res.badRequest({
+                        message: 'Pendaftaran belum memiliki peserta.',
+                    });
+                }
+
+                const pesertaTanpaNik = pesertaList.find(
+                    (peserta) => !peserta.nik || !peserta.nik.trim()
+                );
+
+                if (pesertaTanpaNik) {
+                    return res.badRequest({
+                        message: `NIK peserta ${pesertaTanpaNik.nama_lengkap} wajib diisi.`,
+                    });
+                }
+
+                // Periksa NIK ganda di dalam pendaftaran yang sama.
+                const daftarNik = pesertaList.map(
+                    (peserta) => peserta.nik.trim()
+                );
+
+                if (new Set(daftarNik).size !== daftarNik.length) {
+                    return res.badRequest({
+                        message: 'Terdapat NIK yang sama pada peserta dalam pendaftaran ini.',
+                    });
+                }
+
+                for (const peserta of pesertaList) {
+                    let player = null;
+
+                    // Jika sudah terhubung ke Player, gunakan pemain tersebut.
+                    if (peserta.player_id) {
+                        player = await Player.findOne({
+                            id: peserta.player_id,
+                        });
+                    }
+
+                    // Jika belum terhubung, cari berdasarkan NIK.
+                    if (!player) {
+                        player = await Player.findOne({
+                            nik: peserta.nik.trim(),
+                        });
+                    }
+
+                    // Kalau belum ada, buat Player baru.
+                    if (!player) {
+                        const kelasTurnamen = peserta.kelas_turnamen_id
+                            ? await KelasTurnamen.findOne({
+                                id: peserta.kelas_turnamen_id,
+                            })
+                            : null;
+
+                        player = await Player.create({
+                            nama: peserta.nama_lengkap,
+                            nik: peserta.nik.trim(),
+                            gambar_diri: peserta.foto_peserta || undefined,
+                            sektor: kelasTurnamen
+                                ? kelasTurnamen.sektor
+                                : undefined,
+                        }).fetch();
+                    }
+
+                    // Hubungkan peserta dengan Player.
+                    if (peserta.foto_peserta && !player.gambar_diri) {
+                        player = await Player.updateOne({
+                            id: player.id,
+                        }).set({
+                            gambar_diri: peserta.foto_peserta,
+                        });
+                    }
+                }
+            }
+
+            // Perbarui status pendaftaran.
+            const updated = await Pendaftaran.updateOne({
+                id: pendaftaran.id,
+            }).set({
                 status_pendaftaran,
             });
 
@@ -232,11 +329,17 @@ module.exports = {
             });
 
         } catch (err) {
-            sails.log.error('Error saat update status pendaftaran:', err);
-            return res.serverError({ message: 'Terjadi kesalahan server.', error: err.message });
+            sails.log.error(
+                'Error saat update status pendaftaran:',
+                err
+            );
+
+            return res.serverError({
+                message: 'Terjadi kesalahan server.',
+                error: err.message,
+            });
         }
     },
-
 
     destroy: async function (req, res) {
         try {

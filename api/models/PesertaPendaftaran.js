@@ -19,6 +19,11 @@ module.exports = {
       columnName: 'player_id',
     },
 
+    kelas_turnamen_id: {
+      model: 'KelasTurnamen',
+      columnName: 'kelas_turnamen_id',
+    },
+
     urutan_pemain: {
       type: 'number',
       columnType: 'tinyint',
@@ -93,10 +98,10 @@ module.exports = {
       columnName: 'nama_klub',
     },
 
-    nama_sekolah: {
+    nama_pelatih: {
       type: 'string',
       maxLength: 255,
-      columnName: 'nama_sekolah',
+      columnName: 'nama_pelatih',
     },
 
     nama_ayah: {

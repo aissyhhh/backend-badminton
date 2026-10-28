@@ -40,10 +40,14 @@ module.exports.policies = {
   PendaftaranController: {
     create: true,
     findByKode: true,
-    find: 'isAdmin',
-    findOne: 'isAdmin',
-    updateStatus: 'isAdmin',
-    destroy: 'isAdmin',
+    find: ['isAuthenticated', 'isAdmin'],
+    findOne: ['isAuthenticated', 'isAdmin'],
+    updateStatus: ['isAuthenticated', 'isAdmin'],
+    destroy: ['isAuthenticated', 'isAdmin'],
     uploadDokumen: true,
+  },
+
+  PembayaranController: {
+    '*': ['isAuthenticated', 'isAdmin'],
   },
 };
