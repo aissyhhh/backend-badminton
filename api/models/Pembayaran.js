@@ -45,6 +45,25 @@ module.exports = {
       defaultsTo: 'pending',
       columnName: 'status_pembayaran',
     },
+
+    status_refund: {
+      type: 'string',
+      isIn: ['not_required', 'pending', 'processing', 'refunded'],
+      defaultsTo: 'not_required',
+      columnName: 'status_refund',
+    },
+
+    nominal_refund: {
+      type: 'number',
+      columnType: 'decimal',
+      defaultsTo: 0,
+      columnName: 'nominal_refund',
+    },
+
+    tanggal_refund: {
+      type: 'ref',
+      columnType: 'datetime',
+      columnName: 'tanggal_refund',
+    },
   },
 };
-

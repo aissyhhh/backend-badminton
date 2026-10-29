@@ -45,4 +45,13 @@ module.exports.routes = {
   'PUT /pendaftaran/:id/status': 'PendaftaranController.updateStatus',
   'DELETE /pendaftaran/:id': 'PendaftaranController.destroy',
   'POST /pendaftaran/:id/upload-dokumen': 'PendaftaranController.uploadDokumen',
+
+  // Pembayaran berdasarkan turnamen
+  'GET /turnamen/:turnamenId/pembayaran': 'PembayaranController.findByTurnamen',
+  'POST /turnamen/:turnamenId/pembayaran': 'PembayaranController.create',
+
+  // Detail pembayaran
+  'GET /turnamen/:turnamenId/pembayaran/:id': 'PembayaranController.findOne',
+  'PUT /turnamen/:turnamenId/pembayaran/:id/status': 'PembayaranController.updateStatus',
+  'PUT /turnamen/:turnamenId/pembayaran/:id/refund': 'PembayaranController.refund',
 };
