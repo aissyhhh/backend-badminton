@@ -1,6 +1,4 @@
 module.exports = {
-    // GET /pembayaran
-    // Menampilkan semua data pembayaran
     find: async function (req, res) {
         try {
             const pembayaran = await Pembayaran.find()
@@ -16,8 +14,6 @@ module.exports = {
         }
     },
 
-    // GET /pembayaran/:id
-    // Menampilkan detail pembayaran
     findOne: async function (req, res) {
         try {
             const pembayaran = await Pembayaran.findOne({
@@ -39,7 +35,6 @@ module.exports = {
         }
     },
 
-    // POST /turnamen/:turnamenId/pembayaran
     create: async function (req, res) {
         try {
             const { turnamenId } = req.params;
@@ -59,7 +54,6 @@ module.exports = {
                 });
             }
 
-            // Cari pendaftaran
             const pendaftaran = await Pendaftaran.findOne({
                 id: Number(pendaftaran_id),
             });
@@ -70,7 +64,6 @@ module.exports = {
                 });
             }
 
-            // Pastikan pendaftaran milik turnamen pada URL
             const kelas = await KelasTurnamen.findOne({
                 id: pendaftaran.kelas_turnamen_id,
             });
@@ -81,7 +74,6 @@ module.exports = {
                 });
             }
 
-            // Ambil nominal dari total_biaya pendaftaran
             const nominal = Number(pendaftaran.total_biaya);
 
             if (!Number.isFinite(nominal) || nominal <= 0) {
@@ -112,33 +104,51 @@ module.exports = {
         }
     },
 
-    // PUT /pembayaran/:id/status
-    // Memverifikasi atau menolak pembayaran
     updateStatus: async function (req, res) {
         try {
+            const { id, turnamenId } = req.params;
             const { status_pembayaran } = req.body;
-            const statusValid = ['verified', 'rejected'];
 
-            if (!statusValid.includes(status_pembayaran)) {
+            if (!['verified', 'rejected'].includes(status_pembayaran)) {
                 return res.badRequest({
-                    message: 'Status harus verified atau rejected',
+                    message: 'Status harus verified atau rejected.',
                 });
             }
 
-            const pembayaran = await Pembayaran.findOne({
-                id: req.params.id,
-            });
+            const pembayaran = await Pembayaran.findOne({ id: Number(id) });
 
             if (!pembayaran) {
                 return res.notFound({
-                    message: 'Data pembayaran tidak ditemukan',
+                    message: 'Pembayaran tidak ditemukan.',
                 });
             }
 
             if (pembayaran.status_pembayaran !== 'pending') {
                 return res.badRequest({
-                    message: 'Pembayaran ini sudah diproses sebelumnya',
+                    message: 'Pembayaran sudah diproses.',
                 });
+            }
+
+            const pendaftaran = await Pendaftaran.findOne({
+                id: pembayaran.pendaftaran_id,
+            });
+
+            if (!pendaftaran) {
+                return res.notFound({
+                    message: 'Pendaftaran tidak ditemukan.',
+                });
+            }
+
+            if (turnamenId) {
+                const kelas = await KelasTurnamen.findOne({
+                    id: pendaftaran.kelas_turnamen_id,
+                });
+
+                if (!kelas || Number(kelas.turnamen_id) !== Number(turnamenId)) {
+                    return res.badRequest({
+                        message: 'Pembayaran bukan milik turnamen tersebut.',
+                    });
+                }
             }
 
             const dataUpdate = {
@@ -149,29 +159,85 @@ module.exports = {
                 dataUpdate.tanggal_pembayaran = new Date();
             }
 
-            // Jika pembayaran ditolak, refund bisa diperlukan.
-            if (status_pembayaran === 'rejected') {
-                dataUpdate.status_refund = 'not_required';
+            const hasil = await Pembayaran.updateOne({ id: pembayaran.id })
+                .set(dataUpdate);
+
+            let sinkronisasi = null;
+
+            if (status_pembayaran === 'verified') {
+                if (pendaftaran.status_pendaftaran !== 'confirmed') {
+                    sinkronisasi = {
+                        berhasil: false,
+                        message: 'Pembayaran terverifikasi, tetapi pendaftaran belum dikonfirmasi.',
+                    };
+                } else {
+                    const pesertaList = await PesertaPendaftaran.find({
+                        pendaftaran_id: pendaftaran.id,
+                    });
+
+                    if (pesertaList.length === 0) {
+                        return res.badRequest({
+                            message: 'Pendaftaran belum memiliki peserta.',
+                        });
+                    }
+
+                    for (const peserta of pesertaList) {
+                        if (!peserta.nik || !peserta.nik.trim()) {
+                            return res.badRequest({
+                                message: `NIK peserta ${peserta.nama_lengkap} wajib diisi.`,
+                            });
+                        }
+
+                        const nik = peserta.nik.trim();
+
+                        let player = await Player.findOne({ nik });
+
+                        if (!player && peserta.player_id) {
+                            player = await Player.findOne({
+                                id: peserta.player_id,
+                            });
+                        }
+
+                        if (!player) {
+                            player = await Player.create({
+                                nama: peserta.nama_lengkap,
+                                nik,
+                                gambar_diri: peserta.foto_peserta || undefined,
+                            }).fetch();
+                        }
+
+                        if (peserta.player_id !== player.id) {
+                            await PesertaPendaftaran.updateOne({
+                                id: peserta.id,
+                            }).set({
+                                player_id: player.id,
+                            });
+                        }
+                    }
+
+                    sinkronisasi = {
+                        berhasil: true,
+                        jumlah: pesertaList.length,
+                        message: 'Data peserta berhasil disinkronkan ke Player.',
+                    };
+                }
             }
 
-            const hasil = await Pembayaran.updateOne({
-                id: pembayaran.id,
-            }).set(dataUpdate);
-
             return res.json({
-                message: 'Status pembayaran berhasil diperbarui',
+                message: 'Status pembayaran berhasil diperbarui.',
                 data: hasil,
+                sinkronisasi,
             });
         } catch (err) {
-            sails.log.error(err);
+            sails.log.error('Gagal memperbarui status pembayaran:', err);
+
             return res.serverError({
-                message: 'Gagal memperbarui status pembayaran',
+                message: 'Gagal memperbarui status pembayaran.',
+                error: err.message,
             });
         }
     },
 
-    // PUT /pembayaran/:id/refund
-    // Mencatat pengembalian dana yang sudah dilakukan
     refund: async function (req, res) {
         try {
             const { nominal_refund } = req.body;
@@ -234,8 +300,6 @@ module.exports = {
                 });
             }
 
-            // Pastikan dana sudah benar-benar dikembalikan secara manual
-            // sebelum endpoint ini dipanggil.
             const hasil = await Pembayaran.updateOne({
                 id: pembayaran.id,
             }).set({

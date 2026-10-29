@@ -215,16 +215,9 @@ module.exports = {
             const { id } = req.params;
             const { status_pendaftaran } = req.body;
 
-            const validStatuses = [
-                'pending',
-                'confirmed',
-                'cancelled',
-                'rejected',
-            ];
-
-            if (!status_pendaftaran || !validStatuses.includes(status_pendaftaran)) {
+            if (!['pending', 'confirmed', 'rejected'].includes(status_pendaftaran)) {
                 return res.badRequest({
-                    message: `Status tidak valid. Gunakan salah satu: ${validStatuses.join(', ')}`,
+                    message: 'Status pendaftaran tidak valid.',
                 });
             }
 
@@ -236,106 +229,72 @@ module.exports = {
                 });
             }
 
-            // Ambil seluruh peserta dalam pendaftaran ini.
-            const pesertaList = await PesertaPendaftaran.find({
-                pendaftaran_id: pendaftaran.id,
-            });
-
-            // Jika dikonfirmasi, pastikan semua peserta memiliki NIK.
-            if (status_pendaftaran === 'confirmed') {
-                if (pesertaList.length === 0) {
-                    return res.badRequest({
-                        message: 'Pendaftaran belum memiliki peserta.',
-                    });
-                }
-
-                const pesertaTanpaNik = pesertaList.find(
-                    (peserta) => !peserta.nik || !peserta.nik.trim()
-                );
-
-                if (pesertaTanpaNik) {
-                    return res.badRequest({
-                        message: `NIK peserta ${pesertaTanpaNik.nama_lengkap} wajib diisi.`,
-                    });
-                }
-
-                // Periksa NIK ganda di dalam pendaftaran yang sama.
-                const daftarNik = pesertaList.map(
-                    (peserta) => peserta.nik.trim()
-                );
-
-                if (new Set(daftarNik).size !== daftarNik.length) {
-                    return res.badRequest({
-                        message: 'Terdapat NIK yang sama pada peserta dalam pendaftaran ini.',
-                    });
-                }
-
-                for (const peserta of pesertaList) {
-                    let player = null;
-
-                    // Jika sudah terhubung ke Player, gunakan pemain tersebut.
-                    if (peserta.player_id) {
-                        player = await Player.findOne({
-                            id: peserta.player_id,
-                        });
-                    }
-
-                    // Jika belum terhubung, cari berdasarkan NIK.
-                    if (!player) {
-                        player = await Player.findOne({
-                            nik: peserta.nik.trim(),
-                        });
-                    }
-
-                    // Kalau belum ada, buat Player baru.
-                    if (!player) {
-                        const kelasTurnamen = peserta.kelas_turnamen_id
-                            ? await KelasTurnamen.findOne({
-                                id: peserta.kelas_turnamen_id,
-                            })
-                            : null;
-
-                        player = await Player.create({
-                            nama: peserta.nama_lengkap,
-                            nik: peserta.nik.trim(),
-                            gambar_diri: peserta.foto_peserta || undefined,
-                            sektor: kelasTurnamen
-                                ? kelasTurnamen.sektor
-                                : undefined,
-                        }).fetch();
-                    }
-
-                    // Hubungkan peserta dengan Player.
-                    if (peserta.foto_peserta && !player.gambar_diri) {
-                        player = await Player.updateOne({
-                            id: player.id,
-                        }).set({
-                            gambar_diri: peserta.foto_peserta,
-                        });
-                    }
-                }
-            }
-
-            // Perbarui status pendaftaran.
-            const updated = await Pendaftaran.updateOne({
-                id: pendaftaran.id,
-            }).set({
+            const updated = await Pendaftaran.updateOne({ id }).set({
                 status_pendaftaran,
             });
 
-            return res.json({
-                message: `Status pendaftaran berhasil diubah ke "${status_pendaftaran}".`,
-                data: updated,
-            });
+            let sinkronisasi = null;
 
+            if (status_pendaftaran === 'confirmed') {
+                const pembayaran = await Pembayaran.findOne({
+                    pendaftaran_id: id,
+                    status_pembayaran: 'verified',
+                });
+
+                if (!pembayaran) {
+                    sinkronisasi = {
+                        berhasil: false,
+                        message: 'Pembayaran belum diverifikasi.',
+                    };
+                } else {
+                    const pesertaList = await PesertaPendaftaran.find({
+                        pendaftaran_id: id,
+                    });
+
+                    for (const peserta of pesertaList) {
+                        if (!peserta.nik) {
+                            return res.badRequest({
+                                message: `NIK peserta ${peserta.nama_lengkap} wajib diisi.`,
+                            });
+                        }
+
+                        let player = await Player.findOne({
+                            nik: peserta.nik.trim(),
+                        });
+
+                        if (!player) {
+                            player = await Player.create({
+                                nama: peserta.nama_lengkap,
+                                nik: peserta.nik.trim(),
+                                gambar_diri: peserta.foto_peserta || undefined,
+                            }).fetch();
+                        }
+
+                        await PesertaPendaftaran.updateOne({
+                            id: peserta.id,
+                        }).set({
+                            player_id: player.id,
+                        });
+                    }
+
+                    sinkronisasi = {
+                        berhasil: true,
+                        jumlah: pesertaList.length,
+                        message: 'Data peserta berhasil disinkronkan ke Player.',
+                    };
+                }
+            }
+
+            return res.json({
+                message: `Status pendaftaran berhasil diubah menjadi ${status_pendaftaran}.`,
+                data: updated,
+                sinkronisasi,
+            });
         } catch (err) {
-            sails.log.error(
-                'Error saat update status pendaftaran:',
-                err
-            );
+            sails.log.error('Gagal memperbarui status pendaftaran:', err);
 
             return res.serverError({
-                message: 'Terjadi kesalahan server.',
+                message: 'Gagal memperbarui status pendaftaran.',
                 error: err.message,
             });
         }
