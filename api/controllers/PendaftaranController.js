@@ -43,7 +43,7 @@ module.exports = {
             const kodePendaftaran = await sails.helpers.generateKodePendaftaran();
 
             const hargaPerPeserta = kelasTurnamen.harga || 0;
-            const totalBiaya = hargaPerPeserta * peserta.length;
+            const totalBiaya = hargaPerPeserta;
 
             const pendaftaran = await Pendaftaran.create({
                 kelas_turnamen_id: kelas_turnamen_id,
