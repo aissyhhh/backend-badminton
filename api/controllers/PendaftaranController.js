@@ -236,51 +236,17 @@ module.exports = {
             let sinkronisasi = null;
 
             if (status_pendaftaran === 'confirmed') {
-                const pembayaran = await Pembayaran.findOne({
-                    pendaftaran_id: id,
-                    status_pembayaran: 'verified',
-                });
+                try {
+                    sinkronisasi =
+                        await sails.helpers.sinkronisasiPesertaPendaftaran({
+                            pendaftaranId: Number(id),
+                        });
+                } catch (err) {
+                    sails.log.error('Gagal sinkronisasi peserta:', err);
 
-                if (!pembayaran) {
                     sinkronisasi = {
                         berhasil: false,
-                        message: 'Pembayaran belum diverifikasi.',
-                    };
-                } else {
-                    const pesertaList = await PesertaPendaftaran.find({
-                        pendaftaran_id: id,
-                    });
-
-                    for (const peserta of pesertaList) {
-                        if (!peserta.nik) {
-                            return res.badRequest({
-                                message: `NIK peserta ${peserta.nama_lengkap} wajib diisi.`,
-                            });
-                        }
-
-                        let player = await Player.findOne({
-                            nik: peserta.nik.trim(),
-                        });
-
-                        if (!player) {
-                            player = await Player.create({
-                                nama: peserta.nama_lengkap,
-                                nik: peserta.nik.trim(),
-                                gambar_diri: peserta.foto_peserta || undefined,
-                            }).fetch();
-                        }
-
-                        await PesertaPendaftaran.updateOne({
-                            id: peserta.id,
-                        }).set({
-                            player_id: player.id,
-                        });
-                    }
-
-                    sinkronisasi = {
-                        berhasil: true,
-                        jumlah: pesertaList.length,
-                        message: 'Data peserta berhasil disinkronkan ke Player.',
+                        message: err.message,
                     };
                 }
             }

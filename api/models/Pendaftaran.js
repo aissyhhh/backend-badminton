@@ -41,6 +41,12 @@ module.exports = {
       columnName: 'status_pendaftaran',
     },
 
+    email_terkirim: {
+      type: 'boolean',
+      defaultsTo: false,
+      columnName: 'email_terkirim',
+    },
+
     // Associations
     peserta_pendaftaran: {
       collection: 'PesertaPendaftaran',

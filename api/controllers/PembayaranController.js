@@ -232,60 +232,17 @@ module.exports = {
             let sinkronisasi = null;
 
             if (status_pembayaran === 'verified') {
-                if (pendaftaran.status_pendaftaran !== 'confirmed') {
+                try {
+                    sinkronisasi =
+                        await sails.helpers.sinkronisasiPesertaPendaftaran({
+                            pendaftaranId: Number(pendaftaran.id),
+                        });
+                } catch (err) {
+                    sails.log.error('Gagal sinkronisasi peserta:', err);
+
                     sinkronisasi = {
                         berhasil: false,
-                        message: 'Pembayaran terverifikasi, tetapi pendaftaran belum dikonfirmasi.',
-                    };
-                } else {
-                    const pesertaList = await PesertaPendaftaran.find({
-                        pendaftaran_id: pendaftaran.id,
-                    });
-
-                    if (pesertaList.length === 0) {
-                        return res.badRequest({
-                            message: 'Pendaftaran belum memiliki peserta.',
-                        });
-                    }
-
-                    for (const peserta of pesertaList) {
-                        if (!peserta.nik || !peserta.nik.trim()) {
-                            return res.badRequest({
-                                message: `NIK peserta ${peserta.nama_lengkap} wajib diisi.`,
-                            });
-                        }
-
-                        const nik = peserta.nik.trim();
-
-                        let player = await Player.findOne({ nik });
-
-                        if (!player && peserta.player_id) {
-                            player = await Player.findOne({
-                                id: peserta.player_id,
-                            });
-                        }
-
-                        if (!player) {
-                            player = await Player.create({
-                                nama: peserta.nama_lengkap,
-                                nik,
-                                gambar_diri: peserta.foto_peserta || undefined,
-                            }).fetch();
-                        }
-
-                        if (peserta.player_id !== player.id) {
-                            await PesertaPendaftaran.updateOne({
-                                id: peserta.id,
-                            }).set({
-                                player_id: player.id,
-                            });
-                        }
-                    }
-
-                    sinkronisasi = {
-                        berhasil: true,
-                        jumlah: pesertaList.length,
-                        message: 'Data peserta berhasil disinkronkan ke Player.',
+                        message: err.message,
                     };
                 }
             }
@@ -295,6 +252,7 @@ module.exports = {
                 data: hasil,
                 sinkronisasi,
             });
+
         } catch (err) {
             sails.log.error('Gagal memperbarui status pembayaran:', err);
 
