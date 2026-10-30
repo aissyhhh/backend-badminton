@@ -104,6 +104,73 @@ module.exports = {
         }
     },
 
+    uploadBukti: async function (req, res) {
+        try {
+            const { turnamenId, id } = req.params;
+
+            const pembayaran = await Pembayaran.findOne({
+                id: id
+            });
+
+            if (!pembayaran) {
+                return res.status(404).json({
+                    message: 'Data pembayaran tidak ditemukan'
+                });
+            }
+
+            req.file('file').upload(
+                {
+                    dirname: require('path').resolve(
+                        sails.config.appPath,
+                        'assets/uploads/bukti-pembayaran'
+                    ),
+                    maxBytes: 5 * 1024 * 1024
+                },
+                async function (err, uploadedFiles) {
+                    if (err) {
+                        return res.serverError(err);
+                    }
+
+                    if (!uploadedFiles || uploadedFiles.length === 0) {
+                        return res.status(400).json({
+                            message: 'File bukti pembayaran wajib diunggah'
+                        });
+                    }
+
+                    const file = uploadedFiles[0];
+
+                    if (!file.type || !file.type.startsWith('image/')) {
+                        return res.status(400).json({
+                            message: 'Bukti pembayaran harus berupa gambar'
+                        });
+                    }
+
+                    const fileName = require('path').basename(file.fd);
+                    const filePath = `/uploads/bukti-pembayaran/${fileName}`;
+
+                    const updated = await Pembayaran.updateOne({
+                        id: id
+                    }).set({
+                        bukti_pembayaran: filePath
+                    });
+
+                    if (!updated) {
+                        return res.status(404).json({
+                            message: 'Gagal memperbarui bukti pembayaran'
+                        });
+                    }
+
+                    return res.json({
+                        message: 'Bukti pembayaran berhasil diunggah',
+                        data: updated
+                    });
+                }
+            );
+        } catch (err) {
+            return res.serverError(err);
+        }
+    },
+
     updateStatus: async function (req, res) {
         try {
             const { id, turnamenId } = req.params;

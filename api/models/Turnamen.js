@@ -62,7 +62,7 @@ module.exports = {
 
         status: {
             type: "string",
-            isIn: ["akan_datang", "berlangsung", "pendaftaran", "selesai", "dibatalkan"],
+            isIn: ["akan_datang", "pendaftaran", "pendaftaran_ditutup", "berlangsung", "selesai", "dibatalkan"],
             defaultsTo: "akan_datang",
         },
 

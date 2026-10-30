@@ -45,6 +45,7 @@ module.exports.routes = {
   'PUT /pendaftaran/:id/status': 'PendaftaranController.updateStatus',
   'DELETE /pendaftaran/:id': 'PendaftaranController.destroy',
   'POST /pendaftaran/:id/upload-dokumen': 'PendaftaranController.uploadDokumen',
+  'POST /turnamen/:turnamenId/pembayaran/:id/upload-bukti': 'PembayaranController.uploadBukti',
 
   // Pembayaran berdasarkan turnamen
   'GET /turnamen/:turnamenId/pembayaran': 'PembayaranController.findByTurnamen',
