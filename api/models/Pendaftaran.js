@@ -48,8 +48,8 @@ module.exports = {
     },
 
     email_terkirim: {
-      type: 'boolean',
-      defaultsTo: false,
+      type: 'string',
+      defaultsTo: 'Belum Terkirim',
       columnName: 'email_terkirim',
     },
 

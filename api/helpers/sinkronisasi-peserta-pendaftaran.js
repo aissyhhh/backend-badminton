@@ -92,7 +92,10 @@ module.exports = {
 
             jumlahDisinkronkan++;
 
-            if (peserta.email && peserta.email_terkirim !== true) {
+            if (
+                peserta.email &&
+                peserta.email_terkirim !== 'Sudah Terkirim'
+            ) {
                 try {
                     await sails.helpers.kirimEmailPeserta.with({
                         email: peserta.email,
@@ -105,7 +108,7 @@ module.exports = {
                     await PesertaPendaftaran.updateOne({
                         id: peserta.id,
                     }).set({
-                        email_terkirim: true,
+                        email_terkirim: 'Sudah Terkirim',
                     });
 
                     emailTerkirim++;
