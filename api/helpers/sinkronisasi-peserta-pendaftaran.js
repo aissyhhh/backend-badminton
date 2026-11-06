@@ -13,7 +13,10 @@ module.exports = {
             id: pendaftaranId,
         });
 
-        if (!pendaftaran || pendaftaran.status_pendaftaran !== 'confirmed') {
+        if (
+            !pendaftaran ||
+            pendaftaran.status_pendaftaran !== 'confirmed'
+        ) {
             return {
                 berhasil: false,
                 message: 'Pendaftaran belum dikonfirmasi.',
@@ -100,7 +103,9 @@ module.exports = {
                     await sails.helpers.kirimEmailPeserta.with({
                         email: peserta.email,
                         nama: peserta.nama_lengkap,
-                        kodePendaftaran: String(pendaftaran.kode_pendaftaran),
+                        kodePendaftaran: String(
+                            pendaftaran.kode_pendaftaran
+                        ),
                         namaTurnamen: turnamen.nama,
                         tanggalMulai: String(turnamen.tanggal_mulai),
                     });
@@ -112,6 +117,7 @@ module.exports = {
                     });
 
                     emailTerkirim++;
+
                 } catch (err) {
                     emailGagal++;
 
@@ -122,6 +128,26 @@ module.exports = {
                 }
             }
         }
+
+        const pesertaDenganEmail = pesertaList.filter(
+            (peserta) => peserta.email
+        );
+
+        const semuaEmailTerkirim =
+            pesertaDenganEmail.length > 0 &&
+            await PesertaPendaftaran.count({
+                pendaftaran_id: pendaftaranId,
+                email: { '!=': '' },
+                email_terkirim: 'Sudah Terkirim',
+            }) >= pesertaDenganEmail.length;
+
+        await Pendaftaran.updateOne({
+            id: pendaftaranId,
+        }).set({
+            email_terkirim: semuaEmailTerkirim
+                ? 'Sudah Terkirim'
+                : 'Belum Terkirim',
+        });
 
         return {
             berhasil: true,
