@@ -234,9 +234,9 @@ module.exports = {
             if (status_pembayaran === 'verified') {
                 try {
                     sinkronisasi =
-                        await sails.helpers.sinkronisasiPesertaPendaftaran({
-                            pendaftaranId: Number(pendaftaran.id),
-                        });
+                        await sails.helpers.sinkronisasiPesertaPendaftaran(
+                            Number(pendaftaran.id),
+                        );
                 } catch (err) {
                     sails.log.error('Gagal sinkronisasi peserta:', err);
 

@@ -169,5 +169,11 @@ module.exports = {
       maxLength: 255,
       columnName: 'foto_peserta',
     },
+
+    email_terkirim: {
+      type: 'boolean',
+      defaultsTo: false,
+      columnName: 'email_terkirim',
+    },
   },
 };

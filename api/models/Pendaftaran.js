@@ -8,6 +8,12 @@ module.exports = {
       columnName: 'id',
     },
 
+    turnamen_id: {
+      model: 'Turnamen',
+      required: true,
+      columnName: 'turnamen_id',
+    },
+
     kelas_turnamen_id: {
       model: 'KelasTurnamen',
       columnName: 'kelas_turnamen_id',

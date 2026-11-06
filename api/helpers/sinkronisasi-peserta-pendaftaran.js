@@ -32,6 +32,14 @@ module.exports = {
             };
         }
 
+        const turnamen = await Turnamen.findOne({
+            id: pendaftaran.turnamen_id,
+        });
+
+        if (!turnamen) {
+            throw new Error('Data turnamen tidak ditemukan.');
+        }
+
         const pesertaList = await PesertaPendaftaran.find({
             pendaftaran_id: pendaftaranId,
         });
@@ -43,7 +51,6 @@ module.exports = {
             };
         }
 
-        // Validasi semua NIK sebelum proses sinkronisasi.
         for (const peserta of pesertaList) {
             if (!peserta.nik || !peserta.nik.trim()) {
                 throw new Error(
@@ -85,13 +92,14 @@ module.exports = {
 
             jumlahDisinkronkan++;
 
-            // Kirim email hanya jika belum berhasil dikirim.
             if (peserta.email && peserta.email_terkirim !== true) {
                 try {
-                    await sails.helpers.kirimEmailPeserta({
+                    await sails.helpers.kirimEmailPeserta.with({
                         email: peserta.email,
                         nama: peserta.nama_lengkap,
-                        kodePendaftaran: pendaftaran.kode_pendaftaran,
+                        kodePendaftaran: String(pendaftaran.kode_pendaftaran),
+                        namaTurnamen: turnamen.nama,
+                        tanggalMulai: String(turnamen.tanggal_mulai),
                     });
 
                     await PesertaPendaftaran.updateOne({

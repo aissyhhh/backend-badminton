@@ -46,6 +46,7 @@ module.exports = {
             const totalBiaya = hargaPerPeserta;
 
             const pendaftaran = await Pendaftaran.create({
+                turnamen_id: kelasTurnamen.turnamen_id.id,
                 kelas_turnamen_id: kelas_turnamen_id,
                 kode_pendaftaran: kodePendaftaran,
                 tanggal_daftar: new Date(),
@@ -114,6 +115,7 @@ module.exports = {
     find: async function (req, res) {
         try {
             const {
+                turnamen_id,
                 kelas_turnamen_id,
                 status_pendaftaran,
                 kode_pendaftaran,
@@ -122,6 +124,10 @@ module.exports = {
             } = req.query;
 
             const where = {};
+
+            if (turnamen_id) {
+                where.turnamen_id = parseInt(turnamen_id, 10);
+            }
 
             if (kelas_turnamen_id) {
                 where.kelas_turnamen_id = parseInt(kelas_turnamen_id);
@@ -238,9 +244,9 @@ module.exports = {
             if (status_pendaftaran === 'confirmed') {
                 try {
                     sinkronisasi =
-                        await sails.helpers.sinkronisasiPesertaPendaftaran({
-                            pendaftaranId: Number(id),
-                        });
+                        await sails.helpers.sinkronisasiPesertaPendaftaran(
+                            Number(id),
+                        );
                 } catch (err) {
                     sails.log.error('Gagal sinkronisasi peserta:', err);
 
