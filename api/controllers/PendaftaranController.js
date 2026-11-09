@@ -272,6 +272,76 @@ module.exports = {
         }
     },
 
+    findPlayersByTurnamen: async function (req, res) {
+        try {
+            const turnamenId = Number(req.params.turnamenId);
+
+            if (!Number.isInteger(turnamenId) || turnamenId <= 0) {
+                return res.badRequest({
+                    message: 'ID turnamen tidak valid.',
+                });
+            }
+
+            // Ambil pendaftaran yang sudah dikonfirmasi
+            const pendaftaranList = await Pendaftaran.find({
+                turnamen_id: turnamenId,
+                status_pendaftaran: 'confirmed',
+            }).populate('kelas_turnamen_id');
+
+            const players = [];
+
+            for (const pendaftaran of pendaftaranList) {
+                // Pastikan pembayaran sudah diverifikasi
+                const pembayaran = await Pembayaran.findOne({
+                    pendaftaran_id: pendaftaran.id,
+                    status_pembayaran: 'verified',
+                });
+
+                if (!pembayaran) continue;
+
+                // Ambil peserta yang sudah terhubung ke tabel players
+                const pesertaList = await PesertaPendaftaran.find({
+                    pendaftaran_id: pendaftaran.id,
+                });
+
+                for (const peserta of pesertaList) {
+                    if (!peserta.player_id) continue;
+
+                    const player = await Player.findOne({
+                        id: peserta.player_id,
+                    });
+
+                    if (!player) continue;
+
+                    players.push({
+                        id: player.id,
+                        nama: player.nama,
+                        gambar_diri: player.gambar_diri,
+                        sektor: pendaftaran.kelas_turnamen_id?.sektor || player.sektor,
+                        rank: player.rank,
+                        point: player.point,
+                        kategori_usia:
+                            pendaftaran.kelas_turnamen_id?.kategori_usia || null,
+                        urutan_pemain: peserta.urutan_pemain,
+                    });
+                }
+            }
+
+            return res.json({
+                message: 'Data pemain turnamen berhasil diambil.',
+                data: players,
+            });
+
+        } catch (err) {
+            sails.log.error('Gagal mengambil pemain turnamen:', err);
+
+            return res.serverError({
+                message: 'Terjadi kesalahan saat mengambil data pemain.',
+                error: err.message,
+            });
+        }
+    },
+
     destroy: async function (req, res) {
         try {
             const { id } = req.params;
