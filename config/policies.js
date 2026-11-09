@@ -40,6 +40,7 @@ module.exports.policies = {
   PendaftaranController: {
     create: true,
     findByKode: true,
+    findPlayersByTurnamen: true,
     find: ['isAuthenticated', 'isAdmin'],
     findOne: ['isAuthenticated', 'isAdmin'],
     updateStatus: ['isAuthenticated', 'isAdmin'],
