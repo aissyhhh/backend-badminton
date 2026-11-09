@@ -50,6 +50,7 @@ module.exports.policies = {
 
   PembayaranController: {
     create: true,
+    uploadBukti: true,
     '*': ['isAuthenticated', 'isAdmin'],
   },
 };
