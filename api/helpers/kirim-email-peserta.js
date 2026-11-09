@@ -2,6 +2,15 @@ require('dotenv').config();
 
 const nodemailer = require('nodemailer');
 
+function formatTanggal(tanggal) {
+    return new Date(tanggal).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Jakarta",
+    });
+}
+
 module.exports = {
     friendlyName: 'Kirim email peserta',
 
@@ -63,7 +72,7 @@ module.exports = {
             Berikut detail pendaftaran kamu:
 
             Nama Turnamen: ${inputs.namaTurnamen}
-            Tanggal Mulai: ${inputs.tanggalMulai}
+            Tanggal Mulai: ${formatTanggal(inputs.tanggalMulai)}
             Kode Pendaftaran: ${inputs.kodePendaftaran}
 
             Pastikan kamu menyimpan kode pendaftaran tersebut untuk keperluan pengecekan data.

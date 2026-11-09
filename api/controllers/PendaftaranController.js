@@ -42,15 +42,12 @@ module.exports = {
 
             const kodePendaftaran = await sails.helpers.generateKodePendaftaran();
 
-            const hargaPerPeserta = kelasTurnamen.harga || 0;
-            const totalBiaya = hargaPerPeserta;
-
             const pendaftaran = await Pendaftaran.create({
                 turnamen_id: kelasTurnamen.turnamen_id.id,
                 kelas_turnamen_id: kelas_turnamen_id,
                 kode_pendaftaran: kodePendaftaran,
                 tanggal_daftar: new Date(),
-                total_biaya: totalBiaya,
+                total_biaya: kelasTurnamen.harga,
                 status_pendaftaran: 'pending',
             }).fetch();
 
@@ -282,7 +279,6 @@ module.exports = {
                 });
             }
 
-            // Ambil pendaftaran yang sudah dikonfirmasi
             const pendaftaranList = await Pendaftaran.find({
                 turnamen_id: turnamenId,
                 status_pendaftaran: 'confirmed',
@@ -291,7 +287,6 @@ module.exports = {
             const players = [];
 
             for (const pendaftaran of pendaftaranList) {
-                // Pastikan pembayaran sudah diverifikasi
                 const pembayaran = await Pembayaran.findOne({
                     pendaftaran_id: pendaftaran.id,
                     status_pembayaran: 'verified',
@@ -299,7 +294,6 @@ module.exports = {
 
                 if (!pembayaran) continue;
 
-                // Ambil peserta yang sudah terhubung ke tabel players
                 const pesertaList = await PesertaPendaftaran.find({
                     pendaftaran_id: pendaftaran.id,
                 });
@@ -315,6 +309,7 @@ module.exports = {
 
                     players.push({
                         id: player.id,
+                        pendaftaran_id: pendaftaran.id,
                         nama: player.nama,
                         gambar_diri: player.gambar_diri,
                         sektor: pendaftaran.kelas_turnamen_id?.sektor || player.sektor,
