@@ -363,12 +363,24 @@ module.exports = {
     uploadDokumen: async function (req, res) {
         try {
             const { peserta_id, tipe } = req.body;
+            const appSource = req.headers['x-app-source'];
 
             const validTipes = ['foto_akte', 'foto_kk', 'foto_peserta'];
 
             if (!peserta_id || !tipe || !validTipes.includes(tipe)) {
                 return res.badRequest({
-                    message: `peserta_id dan tipe wajib diisi. Tipe valid: ${validTipes.join(', ')}`,
+                    message: 'peserta_id dan tipe wajib diisi.',
+                });
+            }
+
+            const folderApp = {
+                'frontend-1': 'dokumen-1',
+                'frontend-2': 'dokumen-2',
+            }[appSource];
+
+            if (!folderApp) {
+                return res.badRequest({
+                    message: 'Identitas frontend tidak valid.',
                 });
             }
 
@@ -378,26 +390,40 @@ module.exports = {
                 return res.notFound({ message: 'Peserta tidak ditemukan.' });
             }
 
+            const uploadDir = path.resolve(
+                sails.config.appPath,
+                `assets/uploads/${folderApp}`
+            );
+
+            fs.mkdirSync(uploadDir, { recursive: true });
+
             req.file('file').upload(
                 {
-                    dirname: path.resolve(sails.config.appPath, 'assets/uploads/dokumen'),
-                    maxBytes: 5 * 1024 * 1024, // max 5MB
+                    dirname: uploadDir,
+                    maxBytes: 5 * 1024 * 1024,
                 },
                 async (err, uploadedFiles) => {
                     if (err) {
-                        return res.serverError({ message: 'Gagal upload file.', error: err.message });
+                        return res.serverError({
+                            message: 'Gagal upload file.',
+                            error: err.message,
+                        });
                     }
 
-                    if (uploadedFiles.length === 0) {
-                        return res.badRequest({ message: 'Tidak ada file yang diupload.' });
+                    if (!uploadedFiles || uploadedFiles.length === 0) {
+                        return res.badRequest({
+                            message: 'Tidak ada file yang diupload.',
+                        });
                     }
 
                     const filePath = path.basename(uploadedFiles[0].fd);
 
                     const updateData = {};
-                    updateData[tipe] = `/uploads/dokumen/${filePath}`;
+                    updateData[tipe] = `/uploads/${folderApp}/${filePath}`;
 
-                    const updated = await PesertaPendaftaran.updateOne({ id: peserta_id }).set(updateData);
+                    const updated = await PesertaPendaftaran.updateOne({
+                        id: peserta_id,
+                    }).set(updateData);
 
                     return res.json({
                         message: `${tipe} berhasil diupload.`,
@@ -405,10 +431,13 @@ module.exports = {
                     });
                 }
             );
-
         } catch (err) {
             sails.log.error('Error saat upload dokumen:', err);
-            return res.serverError({ message: 'Terjadi kesalahan server.', error: err.message });
+
+            return res.serverError({
+                message: 'Terjadi kesalahan server.',
+                error: err.message,
+            });
         }
     },
 };

@@ -1,3 +1,6 @@
+const path = require('path');
+const fs = require('fs');
+
 module.exports = {
     find: async function (req, res) {
         try {
@@ -106,7 +109,8 @@ module.exports = {
 
     uploadBukti: async function (req, res) {
         try {
-            const { turnamenId, id } = req.params;
+            const { id } = req.params;
+            const appSource = req.headers['x-app-source'];
 
             const pembayaran = await Pembayaran.findOne({
                 id: id
@@ -118,17 +122,35 @@ module.exports = {
                 });
             }
 
+            const folderApp = {
+                'frontend-1': 'bukti-pembayaran-1',
+                'frontend-2': 'bukti-pembayaran-2',
+            }[appSource];
+
+            if (!folderApp) {
+                return res.badRequest({
+                    message: 'Identitas frontend tidak valid.'
+                });
+            }
+
+            const uploadDir = path.resolve(
+                sails.config.appPath,
+                `assets/uploads/${folderApp}`
+            );
+
+            fs.mkdirSync(uploadDir, { recursive: true });
+
             req.file('file').upload(
                 {
-                    dirname: require('path').resolve(
-                        sails.config.appPath,
-                        'assets/uploads/bukti-pembayaran'
-                    ),
+                    dirname: uploadDir,
                     maxBytes: 5 * 1024 * 1024
                 },
                 async function (err, uploadedFiles) {
                     if (err) {
-                        return res.serverError(err);
+                        return res.serverError({
+                            message: 'Gagal upload bukti pembayaran.',
+                            error: err.message
+                        });
                     }
 
                     if (!uploadedFiles || uploadedFiles.length === 0) {
@@ -145,8 +167,8 @@ module.exports = {
                         });
                     }
 
-                    const fileName = require('path').basename(file.fd);
-                    const filePath = `/uploads/bukti-pembayaran/${fileName}`;
+                    const fileName = path.basename(file.fd);
+                    const filePath = `/uploads/${folderApp}/${fileName}`;
 
                     const updated = await Pembayaran.updateOne({
                         id: id
@@ -167,7 +189,11 @@ module.exports = {
                 }
             );
         } catch (err) {
-            return res.serverError(err);
+            sails.log.error('Gagal upload bukti pembayaran:', err);
+            return res.serverError({
+                message: 'Terjadi kesalahan server.',
+                error: err.message
+            });
         }
     },
 
