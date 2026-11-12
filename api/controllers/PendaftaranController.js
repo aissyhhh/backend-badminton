@@ -112,13 +112,14 @@ module.exports = {
     find: async function (req, res) {
         try {
             const {
-                turnamen_id,
                 kelas_turnamen_id,
                 status_pendaftaran,
                 kode_pendaftaran,
                 page = 1,
                 limit = 10,
             } = req.query;
+
+            const turnamen_id = req.params.turnamenId || req.query.turnamen_id;
 
             const where = {};
 
@@ -360,6 +361,7 @@ module.exports = {
         }
     },
 
+
     uploadDokumen: async function (req, res) {
         try {
             const { peserta_id, tipe } = req.body;
@@ -374,8 +376,8 @@ module.exports = {
             }
 
             const folderApp = {
-                'frontend-1': 'dokumen-1',
-                'frontend-2': 'dokumen-2',
+                'frontend-1': 'shuttler',
+                'frontend-2': 'shuttlehub',
             }[appSource];
 
             if (!folderApp) {
@@ -384,15 +386,21 @@ module.exports = {
                 });
             }
 
-            const peserta = await PesertaPendaftaran.findOne({ id: peserta_id });
+            const peserta = await PesertaPendaftaran.findOne({
+                id: peserta_id,
+            });
 
             if (!peserta) {
-                return res.notFound({ message: 'Peserta tidak ditemukan.' });
+                return res.notFound({
+                    message: 'Peserta tidak ditemukan.',
+                });
             }
 
-            const uploadDir = path.resolve(
+            const uploadDir = path.join(
                 sails.config.appPath,
-                `assets/uploads/${folderApp}`
+                'uploads',
+                folderApp,
+                'dokumen-peserta'
             );
 
             fs.mkdirSync(uploadDir, { recursive: true });
@@ -416,10 +424,27 @@ module.exports = {
                         });
                     }
 
-                    const filePath = path.basename(uploadedFiles[0].fd);
+                    const file = uploadedFiles[0];
+                    const extension = path.extname(file.filename).toLowerCase();
+
+                    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+
+                    if (!allowedExtensions.includes(extension)) {
+                        fs.unlink(file.fd, () => { });
+                        return res.badRequest({
+                            message: 'Format file harus JPG, JPEG, PNG, atau WEBP.',
+                        });
+                    }
+
+                    const fileName = `${tipe}-${peserta_id}-${Date.now()}${extension}`;
+
+                    const finalPath = path.join(uploadDir, fileName);
+
+                    fs.renameSync(file.fd, finalPath);
 
                     const updateData = {};
-                    updateData[tipe] = `/uploads/${folderApp}/${filePath}`;
+                    updateData[tipe] =
+                        `/uploads/${folderApp}/dokumen-peserta/${fileName}`;
 
                     const updated = await PesertaPendaftaran.updateOne({
                         id: peserta_id,
@@ -440,4 +465,51 @@ module.exports = {
             });
         }
     },
+
+
+    serveDokumen: async function (req, res) {
+        try {
+            const { folderApp, filename } = req.params;
+
+            const allowedApps = ['shuttlehub', 'shuttler'];
+
+            if (!allowedApps.includes(folderApp)) {
+                return res.badRequest({
+                    message: 'Folder aplikasi tidak valid.',
+                });
+            }
+
+            const safeFilename = path.basename(filename);
+
+            const uploadDir = path.resolve(
+                sails.config.appPath,
+                'uploads',
+                folderApp,
+                'dokumen-peserta'
+            );
+
+            const filePath = path.resolve(uploadDir, safeFilename);
+
+            if (!filePath.startsWith(uploadDir + path.sep)) {
+                return res.badRequest({
+                    message: 'Lokasi file tidak valid.',
+                });
+            }
+
+            if (!fs.existsSync(filePath)) {
+                return res.notFound({
+                    message: 'Dokumen peserta tidak ditemukan.',
+                });
+            }
+
+            return res.sendFile(filePath);
+        } catch (err) {
+            sails.log.error('Gagal menampilkan dokumen:', err);
+
+            return res.serverError({
+                message: 'Gagal menampilkan dokumen.',
+            });
+        }
+    },
+
 };
