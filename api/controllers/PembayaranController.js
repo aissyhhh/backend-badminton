@@ -113,18 +113,18 @@ module.exports = {
             const appSource = req.headers['x-app-source'];
 
             const pembayaran = await Pembayaran.findOne({
-                id: id
+                id: Number(id)
             });
 
             if (!pembayaran) {
-                return res.status(404).json({
+                return res.notFound({
                     message: 'Data pembayaran tidak ditemukan'
                 });
             }
 
             const folderApp = {
-                'frontend-1': 'bukti-pembayaran-1',
-                'frontend-2': 'bukti-pembayaran-2',
+                'frontend-1': 'shuttler',
+                'frontend-2': 'shuttlehub',
             }[appSource];
 
             if (!folderApp) {
@@ -133,9 +133,11 @@ module.exports = {
                 });
             }
 
-            const uploadDir = path.resolve(
+            const uploadDir = path.join(
                 sails.config.appPath,
-                `assets/uploads/${folderApp}`
+                'uploads',
+                folderApp,
+                'bukti-pembayaran'
             );
 
             fs.mkdirSync(uploadDir, { recursive: true });
@@ -154,30 +156,38 @@ module.exports = {
                     }
 
                     if (!uploadedFiles || uploadedFiles.length === 0) {
-                        return res.status(400).json({
+                        return res.badRequest({
                             message: 'File bukti pembayaran wajib diunggah'
                         });
                     }
 
                     const file = uploadedFiles[0];
 
-                    if (!file.type || !file.type.startsWith('image/')) {
-                        return res.status(400).json({
-                            message: 'Bukti pembayaran harus berupa gambar'
+                    const allowedTypes = [
+                        'image/jpeg',
+                        'image/png',
+                        'image/webp'
+                    ];
+
+                    if (!allowedTypes.includes(file.type)) {
+                        return res.badRequest({
+                            message: 'Bukti pembayaran harus berupa JPG, PNG, atau WEBP'
                         });
                     }
 
                     const fileName = path.basename(file.fd);
-                    const filePath = `/uploads/${folderApp}/${fileName}`;
+
+                    const filePath =
+                        `/uploads/${folderApp}/bukti-pembayaran/${fileName}`;
 
                     const updated = await Pembayaran.updateOne({
-                        id: id
+                        id: Number(id)
                     }).set({
                         bukti_pembayaran: filePath
                     });
 
                     if (!updated) {
-                        return res.status(404).json({
+                        return res.notFound({
                             message: 'Gagal memperbarui bukti pembayaran'
                         });
                     }
@@ -190,9 +200,56 @@ module.exports = {
             );
         } catch (err) {
             sails.log.error('Gagal upload bukti pembayaran:', err);
+
             return res.serverError({
                 message: 'Terjadi kesalahan server.',
                 error: err.message
+            });
+        }
+    },
+
+    serveBukti: async function (req, res) {
+        try {
+            const { folderApp, filename } = req.params;
+
+            const allowedApps = ['shuttlehub', 'shuttler'];
+
+            if (!allowedApps.includes(folderApp)) {
+                return res.badRequest({
+                    message: 'Folder aplikasi tidak valid.'
+                });
+            }
+
+            const safeFilename = path.basename(filename);
+
+            const uploadDir = path.resolve(
+                sails.config.appPath,
+                'uploads',
+                folderApp,
+                'bukti-pembayaran'
+            );
+
+            const filePath = path.resolve(uploadDir, safeFilename);
+
+            if (!filePath.startsWith(uploadDir + path.sep)) {
+                return res.badRequest({
+                    message: 'Lokasi file tidak valid.'
+                });
+            }
+
+            if (!fs.existsSync(filePath)) {
+                return res.notFound({
+                    message: 'File bukti pembayaran tidak ditemukan.'
+                });
+            }
+
+            return res.sendFile(filePath);
+
+        } catch (err) {
+            sails.log.error('Gagal menampilkan bukti pembayaran:', err);
+
+            return res.serverError({
+                message: 'Gagal menampilkan bukti pembayaran.'
             });
         }
     },
