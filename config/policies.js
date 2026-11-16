@@ -27,6 +27,7 @@ module.exports.policies = {
   TurnamenController: {
     find: true,
     findOne: true,
+    serveGambar: true,
     '*': ['isAuthenticated', 'isAdmin'],
   },
 
