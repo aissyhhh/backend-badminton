@@ -46,8 +46,12 @@ module.exports.routes = {
 
     // dokumen peserta
     'POST /pendaftaran/:id/upload-dokumen': 'PendaftaranController.uploadDokumen',
-    'GET /uploads/:folderApp/dokumen-peserta/:filename': 'PendaftaranController.serveDokumen',
-
+    'GET /uploads/:folderApp/turnamen/:id/:filename': {
+      controller: 'TurnamenController',
+      action: 'serveGambar',
+      skipAssets: false,
+    },
+    
     // pembayaran
     'GET /turnamen/:turnamenId/pembayaran': 'PembayaranController.findByTurnamen',
     'POST /turnamen/:turnamenId/pembayaran': 'PembayaranController.create',
