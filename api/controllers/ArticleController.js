@@ -1,6 +1,8 @@
+const fs = require("fs");
+const path = require("path");
+
 function buatSlug(teks) {
   return teks
-    .toString()
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s-]/g, "")
@@ -18,13 +20,8 @@ module.exports = {
         publish_at: { "<=": new Date() },
       };
 
-      if (req.query.kategori) {
-        where.kategori = req.query.kategori;
-      }
-
-      if (req.query.search) {
-        where.judul = { contains: req.query.search };
-      }
+      if (req.query.kategori) where.kategori = req.query.kategori;
+      if (req.query.search) where.judul = { contains: req.query.search };
 
       const total = await Article.count(where);
       const data = await Article.find({
@@ -47,17 +44,22 @@ module.exports = {
     }
   },
 
+  listAdmin: async function (req, res) {
+    try {
+      const data = await Article.find({ sort: "id DESC" });
+      return res.json({ data, total: data.length });
+    } catch (err) {
+      sails.log.error(err);
+      return res.serverError(err);
+    }
+  },
+
   detail: async function (req, res) {
     try {
-      const data = await Article.findOne({
-        id: req.params.id,
-        publish_at: { "<=": new Date() },
-      });
+      const data = await Article.findOne({ id: req.params.id });
 
       if (!data) {
-        return res.status(404).json({
-          message: "Artikel tidak ditemukan",
-        });
+        return res.notFound({ message: "Artikel tidak ditemukan" });
       }
 
       return res.json(data);
@@ -75,9 +77,7 @@ module.exports = {
       });
 
       if (!data) {
-        return res.status(404).json({
-          message: "Artikel tidak ditemukan",
-        });
+        return res.notFound({ message: "Artikel tidak ditemukan" });
       }
 
       return res.json(data);
@@ -92,7 +92,7 @@ module.exports = {
       const { judul, deskripsi, kategori, gambar, publish_at } = req.body;
 
       if (!judul || !deskripsi || !kategori) {
-        return res.status(400).json({
+        return res.badRequest({
           message: "Judul, deskripsi, dan kategori wajib diisi",
         });
       }
@@ -103,8 +103,9 @@ module.exports = {
         deskripsi,
         kategori,
         gambar: gambar || "",
-        publish_at: publish_at ? new Date(publish_at) : new Date(),
+        publish_at: publish_at ? new Date(publish_at) : null,
       }).fetch();
+
       return res.status(201).json({
         message: "Artikel berhasil ditambahkan",
         data,
@@ -123,18 +124,14 @@ module.exports = {
       const artikel = await Article.findOne({ id });
 
       if (!artikel) {
-        return res.status(404).json({
-          message: "Artikel tidak ditemukan",
-        });
+        return res.notFound({ message: "Artikel tidak ditemukan" });
       }
 
       const perubahan = {};
 
       if (judul !== undefined) {
         if (!judul.trim()) {
-          return res.status(400).json({
-            message: "Judul tidak boleh kosong",
-          });
+          return res.badRequest({ message: "Judul tidak boleh kosong" });
         }
 
         perubahan.judul = judul;
@@ -143,24 +140,16 @@ module.exports = {
 
       if (deskripsi !== undefined) {
         if (!deskripsi.trim()) {
-          return res.status(400).json({
-            message: "Deskripsi tidak boleh kosong",
-          });
+          return res.badRequest({ message: "Deskripsi tidak boleh kosong" });
         }
 
         perubahan.deskripsi = deskripsi;
       }
 
-      if (kategori !== undefined) {
-        perubahan.kategori = kategori;
-      }
-
-      if (gambar !== undefined) {
-        perubahan.gambar = gambar;
-      }
-
+      if (kategori !== undefined) perubahan.kategori = kategori;
+      if (gambar !== undefined) perubahan.gambar = gambar;
       if (publish_at !== undefined) {
-        perubahan.publish_at = publish_at;
+        perubahan.publish_at = publish_at ? new Date(publish_at) : null;
       }
 
       const data = await Article.updateOne({ id }).set(perubahan);
@@ -175,23 +164,117 @@ module.exports = {
     }
   },
 
-  delete: async function (req, res) {
+  uploadGambar: async function (req, res) {
     try {
-      const id = req.params.id;
+      const { id, folderApp } = req.params;
+      const allowedApps = ["shuttlehub", "shuttler"];
+
+      if (!allowedApps.includes(folderApp)) {
+        return res.badRequest({ message: "Aplikasi tidak valid" });
+      }
 
       const artikel = await Article.findOne({ id });
 
       if (!artikel) {
-        return res.status(404).json({
-          message: "Artikel tidak ditemukan",
-        });
+        return res.notFound({ message: "Artikel tidak ditemukan" });
+      }
+
+      const tempDir = path.join(sails.config.appPath, ".tmp", "uploads");
+      await fs.promises.mkdir(tempDir, { recursive: true });
+
+      req.file("gambar").upload(
+        { dirname: tempDir, maxBytes: 5 * 1024 * 1024 },
+        async (error, files) => {
+          if (error) return res.serverError(error);
+
+          if (!files || !files.length) {
+            return res.badRequest({ message: "Gambar belum dipilih" });
+          }
+
+          const file = files[0];
+          const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+          if (!allowedTypes.includes(file.type)) {
+            await fs.promises.unlink(file.fd).catch(() => {});
+            return res.badRequest({
+              message: "Format gambar harus JPG, PNG, atau WEBP",
+            });
+          }
+
+          const extension = path.extname(file.filename).toLowerCase();
+          const fileName = `page${extension}`;
+
+          const uploadDir = path.join(
+            sails.config.appPath,
+            "uploads",
+            folderApp,
+            "articles",
+            String(id)
+          );
+
+          await fs.promises.mkdir(uploadDir, { recursive: true });
+
+          const destination = path.join(uploadDir, fileName);
+          const gambar = `/uploads/${folderApp}/articles/${id}/${fileName}`;
+
+          try {
+            await fs.promises.rename(file.fd, destination);
+            await Article.updateOne({ id }).set({ gambar });
+
+            return res.ok({
+              message: "Gambar artikel berhasil diupload",
+              gambar,
+            });
+          } catch (err) {
+            await fs.promises.unlink(file.fd).catch(() => {});
+            return res.serverError(err);
+          }
+        }
+      );
+    } catch (err) {
+      return res.serverError(err);
+    }
+  },
+
+  serveGambar: async function (req, res) {
+    try {
+      const { folderApp, id, filename } = req.params;
+
+      if (!["shuttlehub", "shuttler"].includes(folderApp)) {
+        return res.badRequest({ message: "Aplikasi tidak valid" });
+      }
+
+      const filePath = path.join(
+        sails.config.appPath,
+        "uploads",
+        folderApp,
+        "articles",
+        String(id),
+        path.basename(filename)
+      );
+
+      if (!fs.existsSync(filePath)) {
+        return res.notFound({ message: "Gambar artikel tidak ditemukan" });
+      }
+
+      return res.sendFile(filePath);
+    } catch (err) {
+      return res.serverError(err);
+    }
+  },
+
+  delete: async function (req, res) {
+    try {
+      const id = req.params.id;
+      const artikel = await Article.findOne({ id });
+
+      if (!artikel) {
+        return res.notFound({ message: "Artikel tidak ditemukan" });
       }
 
       await Article.destroyOne({ id });
 
-      return res.json({
-        message: "Artikel berhasil dihapus",
-      });
+      return res.json({ message: "Artikel berhasil dihapus" });
     } catch (err) {
       sails.log.error(err);
       return res.serverError(err);

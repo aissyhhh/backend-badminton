@@ -21,6 +21,7 @@ module.exports.policies = {
     list: true,
     detail: true,
     findBySlug: true,
+    serveGambar: true,
     '*': ['isAuthenticated', 'isAdmin'],
   },
 
