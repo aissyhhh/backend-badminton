@@ -219,7 +219,7 @@ module.exports = {
             const { id } = req.params;
             const { status_pendaftaran } = req.body;
 
-            if (!['pending', 'confirmed', 'rejected'].includes(status_pendaftaran)) {
+            if (!['pending', 'confirmed', 'cancelled', 'rejected'].includes(status_pendaftaran)) {
                 return res.badRequest({
                     message: 'Status pendaftaran tidak valid.',
                 });
@@ -427,7 +427,7 @@ module.exports = {
                     const file = uploadedFiles[0];
                     const extension = path.extname(file.filename).toLowerCase();
 
-                    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+                    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp',];
 
                     if (!allowedExtensions.includes(extension)) {
                         fs.unlink(file.fd, () => { });
