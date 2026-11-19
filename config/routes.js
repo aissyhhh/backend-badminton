@@ -52,9 +52,9 @@ module.exports.routes = {
 
   // dokumen peserta
   'POST /pendaftaran/:id/upload-dokumen': 'PendaftaranController.uploadDokumen',
-  'GET /uploads/:folderApp/turnamen/:id/:filename': {
-    controller: 'TurnamenController',
-    action: 'serveGambar',
+  'GET /uploads/:folderApp/dokumen-peserta/:filename': {
+    controller: 'PendaftaranController',
+    action: 'serveDokumen',
     skipAssets: false,
   },
 
@@ -67,7 +67,11 @@ module.exports.routes = {
   'PUT /turnamen/:turnamenId/pembayaran/:id/refund': 'PembayaranController.refund',
 
   // bukti pembayaran
-  'GET /uploads/:folderApp/bukti-pembayaran/:filename': 'PembayaranController.serveBukti',
+  'GET /uploads/:folderApp/bukti-pembayaran/:filename': {
+    controller: 'PembayaranController',
+    action: 'serveBukti',
+    skipAssets: false,
+  },
 
   // pemain yng mengikuti turnamen
   'GET /turnamen/:turnamenId/peserta': 'PendaftaranController.findPlayersByTurnamen',

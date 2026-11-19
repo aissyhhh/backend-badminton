@@ -346,85 +346,157 @@ module.exports = {
         }
     },
 
-    refund: async function (req, res) {
-        try {
-            const { nominal_refund } = req.body;
 
-            if (
-                nominal_refund === undefined ||
-                nominal_refund === null ||
-                nominal_refund === ''
-            ) {
-                return res.badRequest({
-                    message: 'Nominal refund wajib diisi',
-                });
-            }
 
-            const jumlahRefund = Number(nominal_refund);
+refund: async function (req, res) {
+    try {
+        const { id, turnamenId } = req.params;
 
-            if (!Number.isFinite(jumlahRefund) || jumlahRefund <= 0) {
-                return res.badRequest({
-                    message: 'Nominal refund harus lebih dari 0',
-                });
-            }
+        const pembayaran = await Pembayaran.findOne({
+            id: Number(id),
+        }).populate('pendaftaran_id');
 
-            const pembayaran = await Pembayaran.findOne({
-                id: req.params.id,
-            }).populate('pendaftaran_id');
-
-            if (!pembayaran) {
-                return res.notFound({
-                    message: 'Data pembayaran tidak ditemukan',
-                });
-            }
-
-            if (pembayaran.status_pembayaran !== 'verified') {
-                return res.badRequest({
-                    message: 'Hanya pembayaran terverifikasi yang dapat direfund',
-                });
-            }
-
-            if (
-                !pembayaran.pendaftaran_id ||
-                pembayaran.pendaftaran_id.status_pendaftaran !== 'rejected'
-            ) {
-                return res.badRequest({
-                    message: 'Pendaftaran harus berstatus rejected untuk refund',
-                });
-            }
-
-            if (
-                pembayaran.status_refund === 'refunded' ||
-                pembayaran.status_refund === 'processing'
-            ) {
-                return res.badRequest({
-                    message: 'Refund sudah diproses atau diselesaikan',
-                });
-            }
-
-            if (jumlahRefund > Number(pembayaran.nominal)) {
-                return res.badRequest({
-                    message: 'Nominal refund tidak boleh melebihi nominal pembayaran',
-                });
-            }
-
-            const hasil = await Pembayaran.updateOne({
-                id: pembayaran.id,
-            }).set({
-                status_refund: 'refunded',
-                nominal_refund: jumlahRefund,
-                tanggal_refund: new Date(),
-            });
-
-            return res.json({
-                message: 'Data refund berhasil dicatat',
-                data: hasil,
-            });
-        } catch (err) {
-            sails.log.error(err);
-            return res.serverError({
-                message: 'Gagal mencatat refund',
+        if (!pembayaran) {
+            return res.notFound({
+                message: 'Data pembayaran tidak ditemukan.',
             });
         }
-    },
+
+        if (pembayaran.status_pembayaran !== 'verified') {
+            return res.badRequest({
+                message: 'Hanya pembayaran terverifikasi yang dapat direfund.',
+            });
+        }
+
+        const pendaftaran = pembayaran.pendaftaran_id;
+
+        if (!pendaftaran || pendaftaran.status_pendaftaran !== 'rejected') {
+            return res.badRequest({
+                message: 'Pendaftaran harus berstatus rejected untuk refund.',
+            });
+        }
+
+        const kelas = await KelasTurnamen.findOne({
+            id: pendaftaran.kelas_turnamen_id,
+        });
+
+        if (!kelas || Number(kelas.turnamen_id) !== Number(turnamenId)) {
+            return res.badRequest({
+                message: 'Pembayaran bukan milik turnamen tersebut.',
+            });
+        }
+
+        if (pembayaran.status_refund === 'refunded') {
+            return res.badRequest({
+                message: 'Refund sudah diselesaikan.',
+            });
+        }
+
+        const jumlahRefund = Number(pembayaran.nominal);
+
+        if (!Number.isFinite(jumlahRefund) || jumlahRefund <= 0) {
+            return res.badRequest({
+                message: 'Nominal pembayaran tidak valid.',
+            });
+        }
+
+        // Ambil data peserta
+        const peserta = await PesertaPendaftaran.find({
+            pendaftaran_id: pendaftaran.id,
+        });
+
+        if (!peserta || peserta.length === 0) {
+            return res.badRequest({
+                message: 'Data peserta pendaftaran tidak ditemukan.',
+            });
+        }
+
+        const pesertaDenganEmail = peserta.filter(
+            (item) => item.email && item.email.trim() !== ''
+        );
+
+        if (pesertaDenganEmail.length === 0) {
+            return res.badRequest({
+                message: 'Email peserta tidak ditemukan. Refund belum dicatat.',
+            });
+        }
+
+        // Ambil informasi turnamen
+        const turnamen = await Turnamen.findOne({
+            id: kelas.turnamen_id,
+        });
+
+        if (!turnamen) {
+            return res.notFound({
+                message: 'Data turnamen tidak ditemukan.',
+            });
+        }
+
+        const tanggalRefund = new Date();
+
+        // Catat refund
+        const hasil = await Pembayaran.updateOne({
+            id: pembayaran.id,
+        }).set({
+            status_refund: 'refunded',
+            nominal_refund: jumlahRefund,
+            tanggal_refund: tanggalRefund,
+        });
+
+        if (!hasil) {
+            throw new Error('Gagal menyimpan data refund.');
+        }
+
+        // Kirim email kepada setiap peserta
+        const hasilEmail = await Promise.allSettled(
+            pesertaDenganEmail.map((item) =>
+                sails.helpers.kirimEmailRefund({
+                    email: item.email,
+                    nama: item.nama_lengkap,
+                    kodePendaftaran: pendaftaran.kode_pendaftaran,
+                    namaTurnamen: turnamen.nama,
+                    tanggalMulai: String(turnamen.tanggal_mulai),
+                    nominalRefund: jumlahRefund,
+                    tanggalRefund: tanggalRefund.toISOString(),
+                })
+            )
+        );
+
+        const emailBerhasil = hasilEmail.filter(
+            (item) => item.status === 'fulfilled'
+        ).length;
+
+        const emailGagal = hasilEmail.filter(
+            (item) => item.status === 'rejected'
+        ).length;
+
+        hasilEmail.forEach((item, index) => {
+            if (item.status === 'rejected') {
+                sails.log.error(
+                    `Gagal mengirim email refund ke ${pesertaDenganEmail[index].email}:`,
+                    item.reason
+                );
+            }
+        });
+
+        return res.json({
+            message: 'Refund 100% berhasil dicatat.',
+            data: hasil,
+            email: {
+                total: pesertaDenganEmail.length,
+                berhasil: emailBerhasil,
+                gagal: emailGagal,
+            },
+        });
+
+    } catch (err) {
+        sails.log.error('Gagal mencatat refund:', err);
+
+        return res.serverError({
+            message: 'Gagal mencatat refund.',
+            error: err.message,
+        });
+    }
+},
+
 };

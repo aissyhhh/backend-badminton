@@ -143,6 +143,7 @@ module.exports = {
                 Pendaftaran.find({ where })
                     .populate('kelas_turnamen_id')
                     .populate('peserta_pendaftaran')
+                    .populate('pembayaran')
                     .sort('tanggal_daftar DESC')
                     .skip(skip)
                     .limit(parseInt(limit)),
@@ -171,12 +172,15 @@ module.exports = {
             const { id } = req.params;
 
             const pendaftaran = await Pendaftaran.findOne({ id })
+                .populate('turnamen_id')
                 .populate('kelas_turnamen_id')
                 .populate('peserta_pendaftaran')
                 .populate('pembayaran');
 
             if (!pendaftaran) {
-                return res.notFound({ message: 'Pendaftaran tidak ditemukan.' });
+                return res.notFound({
+                    message: 'Pendaftaran tidak ditemukan.',
+                });
             }
 
             return res.json({
@@ -186,7 +190,11 @@ module.exports = {
 
         } catch (err) {
             sails.log.error('Error saat mengambil detail pendaftaran:', err);
-            return res.serverError({ message: 'Terjadi kesalahan server.', error: err.message });
+
+            return res.serverError({
+                message: 'Terjadi kesalahan server.',
+                error: err.message,
+            });
         }
     },
 
@@ -219,7 +227,7 @@ module.exports = {
             const { id } = req.params;
             const { status_pendaftaran } = req.body;
 
-            if (!['pending', 'confirmed', 'cancelled', 'rejected'].includes(status_pendaftaran)) {
+            if (!['pending', 'confirmed', 'rejected'].includes(status_pendaftaran)) {
                 return res.badRequest({
                     message: 'Status pendaftaran tidak valid.',
                 });
@@ -471,6 +479,9 @@ module.exports = {
         try {
             const { folderApp, filename } = req.params;
 
+            console.log('FOLDER APP:', folderApp);
+            console.log('FILENAME:', filename);
+
             const allowedApps = ['shuttlehub', 'shuttler'];
 
             if (!allowedApps.includes(folderApp)) {
@@ -489,6 +500,9 @@ module.exports = {
             );
 
             const filePath = path.resolve(uploadDir, safeFilename);
+
+            console.log('PATH FILE:', filePath);
+            console.log('FILE ADA:', fs.existsSync(filePath));
 
             if (!filePath.startsWith(uploadDir + path.sep)) {
                 return res.badRequest({
